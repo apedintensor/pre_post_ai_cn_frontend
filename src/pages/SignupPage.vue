@@ -6,7 +6,6 @@
         <template #title>
           <div class="text-center mb-5">
             <div class="text-900 text-3xl font-medium mb-3">创建账号</div>
-            <span class="text-600 font-medium">加入读片研究</span>
           </div>
         </template>
         <template #content>
@@ -259,11 +258,20 @@ onMounted(async () => {
     // Countries result handling with fallback to /countries (no /api) if needed
     if (countriesRes.status === 'fulfilled') {
       countries.value = normalizeCountries(countriesRes.value.data);
+      // Default to China if available and user hasn't chosen yet
+      if (!formData.country_code) {
+        const cn = countries.value.find(c => c.code === 'CN');
+        if (cn) formData.country_code = cn.code;
+      }
     } else {
   console.warn('Failed to fetch /api/countries, trying /countries ...', countriesRes.reason);
       try {
         const fallback = await apiClient.get('/countries');
         countries.value = normalizeCountries(fallback.data);
+        if (!formData.country_code) {
+          const cn = countries.value.find(c => c.code === 'CN');
+          if (cn) formData.country_code = cn.code;
+        }
       } catch (fallbackErr) {
   console.warn('Failed to fetch countries fallback:', fallbackErr);
   toast.add({ severity: 'warn', summary: '国家/地区', detail: '无法加载国家/地区列表。', life: 2500 });
@@ -280,10 +288,18 @@ async function retryCountries(){
   try {
     const res = await apiClient.get('/api/countries/');
     countries.value = normalizeCountries(res.data);
+    if (!formData.country_code) {
+      const cn = countries.value.find(c => c.code === 'CN');
+      if (cn) formData.country_code = cn.code;
+    }
   } catch (err) {
     try {
       const fb = await apiClient.get('/countries');
       countries.value = normalizeCountries(fb.data);
+      if (!formData.country_code) {
+        const cn = countries.value.find(c => c.code === 'CN');
+        if (cn) formData.country_code = cn.code;
+      }
     } catch (e) {
   toast.add({ severity:'warn', summary:'国家/地区', detail:'重试失败，请稍后再试。', life:2500 });
     }
