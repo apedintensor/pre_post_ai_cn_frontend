@@ -1,7 +1,7 @@
 <template>
   <div v-if="isPostAiPhase">
     <Card class="mb-4">
-      <template #title>AI Predictions</template>
+      <template #title>{{ $t('review.aiSuggestions') }}</template>
       <template #content>
         <div v-if="aiOutputs && aiOutputs.length > 0">
           <DataTable :value="aiOutputs" 
@@ -9,13 +9,13 @@
                      responsiveLayout="scroll"
                      sortField="rank"
                      :sortOrder="1">
-            <Column field="rank" header="Rank" sortable style="width: 15%">
+            <Column field="rank" :header="$t('common.rank')" sortable style="width: 15%">
               <template #body="slotProps">
                 <Tag :value="slotProps.data.rank" rounded />
               </template>
             </Column>
-            <Column field="prediction.name" header="Predicted Diagnosis" sortable style="width: 60%"></Column>
-            <Column field="confidence_score" header="Confidence" sortable style="width: 25%">
+            <Column field="prediction.name" :header="$t('review.aiSuggestions')" sortable style="width: 60%"></Column>
+            <Column field="confidence_score" :header="$t('report.accuracyTop1')" sortable style="width: 25%">
               <template #body="slotProps">
                 <ProgressBar :value="slotProps.data.confidence_score * 100" :showValue="false" style="height: .8em" />
                 <span class="ml-2">{{ (slotProps.data.confidence_score * 100).toFixed(0) }}%</span>
@@ -24,7 +24,7 @@
           </DataTable>
         </div>
         <div v-else>
-          <p>No AI predictions available for this case, or they are still loading.</p>
+          <p>{{ $t('review.aiSuggestions') }}：{{ $t('loading') }}</p>
         </div>
       </template>
     </Card>
@@ -37,6 +37,9 @@ import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Tag from 'primevue/tag';
 import ProgressBar from 'primevue/progressbar';
+import { useI18n } from 'vue-i18n';
+
+useI18n();
 
 interface DiagnosisTermRead {
   name: string;

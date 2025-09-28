@@ -155,10 +155,10 @@ const getCertaintyLabel = (score: number): string => {
 
 const getAiUsefulnessLabel = (usefulness: string | null | undefined): string => {
   switch (usefulness) {
-    case 'very': return 'Very Useful';
-    case 'somewhat': return 'Somewhat Useful';
-    case 'not': return 'Not Useful';
-    default: return 'Not specified';
+    case 'very': return '非常有用';
+    case 'somewhat': return '较有用';
+    case 'not': return '没什么用';
+    default: return '未指定';
   }
 };
 

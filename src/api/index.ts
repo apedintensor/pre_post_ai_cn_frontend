@@ -21,7 +21,7 @@ import axios from 'axios';
 //   4. https://reader-study.fly.dev (production safety fallback)
 // -------------------------------------------------------------
 
-const FALLBACK_FLY_BACKEND = 'https://reader-study.fly.dev';
+const FALLBACK_FLY_BACKEND = 'https://reader-study-cn-backend.fly.dev';
 const rawPrimary = (import.meta.env.VITE_API_BASE_URL as string | undefined) || (import.meta.env.VITE_API_BASE_URL_PROD as string | undefined);
 
 function sanitize(origin?: string): string | undefined {

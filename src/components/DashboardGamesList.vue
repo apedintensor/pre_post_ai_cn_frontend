@@ -3,64 +3,52 @@
     <template #title>
       <div class="flex flex-column align-items-center gap-3 w-full">
         <span class="title-line games-intro">
-          <span class="line">Complete at least 10 cases to finish one game,</span>
-          <span class="line">but feel free to take more!</span>
+          <span class="line">{{ $t('dashboard.introLine1') }}</span>
+          <span class="line">{{ $t('dashboard.introLine2') }}</span>
         </span>
         <div class="start-btn-container">
-          <Button v-if="!allExhausted" :label="nextActionLabel" icon="pi pi-play" class="p-button-rounded big-start-btn cta-start-btn" :loading="advancing" :disabled="advancing" @click="onAdvance" />
-          <Tag v-else severity="success" value="All Done" />
+          <Button v-if="!allExhausted" :label="nextActionLabelLocalized" icon="pi pi-play" class="p-button-rounded big-start-btn cta-start-btn" :loading="advancing" :disabled="advancing" @click="onAdvance" />
+          <Tag v-else severity="success" :value="$t('dashboard.allDone')" />
         </div>
       </div>
     </template>
     <template #content>
-  <div v-if="!games.length && !incompleteBlockExists && !advancing && !allExhausted" class="text-600 text-sm text-center py-3">No games yet. Start your first game.</div>
+  <div v-if="!games.length && !incompleteBlockExists && !advancing && !allExhausted" class="text-600 text-sm text-center py-3">{{ $t('dashboard.noGamesYet') }}</div>
       <div class="blocks-list flex flex-column gap-3">
   <div v-for="g in gamesSorted" :key="g.block_index" class="block-row u-surface-overlay u-card-pad border-round u-elev-1">
           <div class="row-head flex justify-content-between align-items-center">
             <div class="flex align-items-center gap-2">
-              <span class="font-medium">Game #{{ g.block_index + 1 }}</span>
+              <span class="font-medium">{{ $t('dashboard.gameN', { n: g.block_index + 1 }) }}</span>
             </div>
             <div class="flex align-items-center gap-2">
-              <Button label="Details" text size="small" icon="pi pi-list" @click="toggleDetails(g.block_index)" />
-              <Button text size="small" label="Open Report" icon="pi pi-chart-line" @click="viewReport(g.block_index)" />
+              <Button :label="$t('dashboard.details')" text size="small" icon="pi pi-list" @click="toggleDetails(g.block_index)" />
+              <Button text size="small" :label="$t('dashboard.openReport')" icon="pi pi-chart-line" @click="viewReport(g.block_index)" />
             </div>
           </div>
-          <div class="summary mt-2">
-            <div v-if="g.top1_accuracy_pre == null && g.top1_accuracy_post == null" class="text-xs text-500">
-              <template v-if="assignmentsByBlock[g.block_index] && assignmentsByBlock[g.block_index].some(a=>!a.completed_post_at)">
-                In progress...
-              </template>
-              <template v-else>
-                Summary pending...
-              </template>
-            </div>
-            <div v-else class="metrics flex flex-wrap gap-4 text-sm">
-              <div class="acc-group u-surface-overlay">
-                <div class="group-title u-heading-sub">Your Accuracy</div>
-                <div class="stat-row flex justify-content-between"><span>Top1</span><span>{{ pct(g.top1_accuracy_pre) }} → {{ pct(g.top1_accuracy_post) }} <span :class="['ml-1', deltaClass(g.delta_top1)]">({{ deltaDisplay(g.delta_top1) }})</span></span></div>
-                <div class="stat-row flex justify-content-between"><span>Top3</span><span>{{ pct(g.top3_accuracy_pre) }} → {{ pct(g.top3_accuracy_post) }} <span :class="['ml-1', deltaClass(g.delta_top3)]">({{ deltaDisplay(g.delta_top3) }})</span></span></div>
+            <div class="summary mt-2">
+              <div v-if="g.top1_accuracy_pre == null && g.top1_accuracy_post == null" class="text-xs text-500">
+                <template v-if="assignmentsByBlock[g.block_index] && assignmentsByBlock[g.block_index].some(a=>!a.completed_post_at)">
+                  {{ $t('dashboard.inProgress') }}
+                </template>
+                <template v-else>
+                  {{ $t('common.complete') }}
+                </template>
               </div>
+              <div v-else class="text-xs text-500">{{ $t('dashboard.reportReady') }}</div>
+              <!-- Removed per-game progress bar for a cleaner, more compact card -->
             </div>
-            <!-- Removed per-game progress bar for a cleaner, more compact card -->
-          </div>
           <transition name="fade">
             <div v-if="expandedBlock === g.block_index" class="details mt-3 border-top-1 surface-border pt-2">
               <div class="flex flex-column gap-2">
-                <div v-if="reportState[g.block_index]?.loading" class="text-xs text-500">Loading report...</div>
+                <div v-if="reportState[g.block_index]?.loading" class="text-xs text-500">{{ $t('dashboard.loadingReport') }}</div>
                 <div v-else-if="reportState[g.block_index]?.data" class="report-cases text-sm">
                   <div class="font-medium mb-2 flex justify-content-between">
-                    <span>Game Report</span>
-                    <span class="text-xs text-500">{{ reportState[g.block_index].data.total_cases }} cases</span>
-                  </div>
-                  <div class="grid text-xs mb-2">
-                    <div class="col-6 md:col-3"><strong>Top1</strong> {{ pct(reportState[g.block_index].data.top1_accuracy_pre) }} → {{ pct(reportState[g.block_index].data.top1_accuracy_post) }}</div>
-                    <div class="col-6 md:col-3"><strong>Top3</strong> {{ pct(reportState[g.block_index].data.top3_accuracy_pre) }} → {{ pct(reportState[g.block_index].data.top3_accuracy_post) }}</div>
-                    <div class="col-6 md:col-3"><strong>Δ Top1</strong> <span :class="deltaClass(reportState[g.block_index].data.delta_top1)">{{ deltaDisplay(reportState[g.block_index].data.delta_top1) }}</span></div>
-                    <div class="col-6 md:col-3"><strong>Δ Top3</strong> <span :class="deltaClass(reportState[g.block_index].data.delta_top3)">{{ deltaDisplay(reportState[g.block_index].data.delta_top3) }}</span></div>
+                    <span>{{ $t('report.gameReport') }}</span>
+                    <span class="text-xs text-500">{{ $t('report.casesCount', { n: reportState[g.block_index].data.total_cases }) }}</span>
                   </div>
                   <GameReportCaseTable :cases="reportState[g.block_index].data.cases" :termMap="termMap" />
                 </div>
-                <div v-else class="text-xs text-500">Report not ready yet (block may be in progress or finalizing).</div>
+                <div v-else class="text-xs text-500">{{ $t('dashboard.reportNotReadyYet') }}</div>
               </div>
             </div>
           </transition>
@@ -79,12 +67,17 @@ import Tag from 'primevue/tag';
 import { useGamesStore } from '../stores/gamesStore';
 import { useToast } from 'primevue/usetoast';
 import { getGame, canViewReport, type CanViewReportResponse } from '../api/games';
+import { listAssignmentAssessments, listBlockAssessments } from '../api/assessments';
 import { fetchDiagnosisTerms } from '../api/diagnosisTerms';
 import GameReportCaseTable from './GameReportCaseTable.vue';
+import { useI18n } from 'vue-i18n';
+import { useUserStore } from '../stores/userStore';
 
 const gamesStore = useGamesStore();
 const toast = useToast();
 const router = useRouter();
+const { t } = useI18n();
+const userStore = useUserStore();
 
 const games = computed(()=>gamesStore.games);
 // expose assignments map for quick status checks
@@ -117,17 +110,15 @@ const incompleteBlockIndex = computed(()=>{
 });
 const incompleteBlockExists = computed(()=> incompleteBlockIndex.value != null);
 const nextActionLabel = computed(()=>{
-  if(incompleteBlockIndex.value != null) return 'Resume';
-  return 'Start';
+  if(incompleteBlockIndex.value != null) return 'resume';
+  return 'start';
 });
+const nextActionLabelLocalized = computed(()=> t(`dashboard.${nextActionLabel.value}`));
 const allExhausted = computed(()=>gamesStore.activeStatus === 'exhausted');
 const expandedBlock = ref<number|null>(null);
 interface ReportState { loading:boolean; data:any|null; attempts:number; poller?:any }
 const reportState = ref<Record<number, ReportState>>({});
 
-function pct(v?: number) { return v == null ? '—' : Math.round(v*100)+'%'; }
-function deltaDisplay(v?: number){ if(v==null) return '—'; const pts = Math.round(v*100); return (pts>=0?'+':'')+pts+' pts'; }
-function deltaClass(v?: number){ if(v==null) return 'text-500'; if(v>0) return 'text-green-500'; if(v<0) return 'text-red-500'; return 'text-500'; }
 // Removed per-game progress Tag display helpers
 
 async function onAdvance(){
@@ -135,7 +126,7 @@ async function onAdvance(){
   try {
     const r = await gamesStore.advanceToNext();
     if(r.status === 'exhausted') {
-      toast.add({ severity:'success', summary:'Completed', detail:'All cases finished. Great job!', life:5000 });
+      toast.add({ severity:'success', summary: t('dashboard.completedToastTitle'), detail: t('dashboard.completedToastDetail'), life:5000 });
       return;
     }
     if(r.assignment){
@@ -148,7 +139,7 @@ async function onAdvance(){
       }
     }
   } catch(e:any){
-    toast.add({ severity:'error', summary:'Error', detail: e.message || 'Failed to advance.', life:4000 });
+    toast.add({ severity:'error', summary: t('common.error'), detail: e.message || t('dashboard.failedAdvance'), life:4000 });
   } finally { advancing.value = false; }
 }
 
@@ -172,8 +163,12 @@ async function loadReport(block:number){
         return;
       }
     } catch(_) { /* on can_view error, fall through to getGame attempt */ }
-    const data:any = await getGame(block);
-    reportState.value[block] = { loading:false, data, attempts: existing?.attempts||0 };
+  const data:any = await getGame(block);
+  // Try to load assignments to improve mapping case_id<->assignment_id
+  try { gamesStore.ensureAssignmentsLoaded(block); } catch(_) { /* best effort */ }
+  // try to hydrate missing user inputs from assessments
+  await fillInputsFromAssessments(data, block);
+  reportState.value[block] = { loading:false, data, attempts: existing?.attempts||0 };
     clearPoller(block);
   } catch(e:any){
     // Assume 404 => not ready yet
@@ -211,6 +206,101 @@ onUnmounted(()=>{
     if(st?.poller){ clearInterval(st.poller); delete st.poller; }
   });
 });
+
+// helper to populate pre/post input fields from assessments per assignment if report lacks them
+async function fillInputsFromAssessments(report:any, block:number){
+  if(!report || !Array.isArray(report.cases)) return;
+  for(const c of report.cases){
+    const caseAny:any = c;
+    const hasPre = !!(caseAny.pre_top1_raw_text || caseAny.pre_top1_diagnosis_term_id);
+    const hasPost = !!(caseAny.post_top1_raw_text || caseAny.post_top1_diagnosis_term_id);
+    if(hasPre && hasPost) continue;
+    const ids:number[] = [];
+    ['assignment_id','pre_assignment_id','post_assignment_id'].forEach((k)=>{ if(typeof caseAny[k]==='number') ids.push(caseAny[k]); });
+    // If missing, derive assignment id by matching case_id from store assignments
+    if(!ids.length){
+      const storeAssignments:any[] = gamesStore.getBlockAssignments(block) as any[];
+      const match = storeAssignments?.find(a=>a.case_id === caseAny.case_id);
+      if(match && typeof match.id === 'number') ids.push(match.id);
+    }
+    if(!ids.length) continue;
+    try {
+      const assessments = await listAssignmentAssessments(ids[0]);
+      const pre = assessments.find(a=>a.phase==='PRE');
+      const post = assessments.find(a=>a.phase==='POST');
+      const pickTop1Text = (a:any)=> Array.isArray(a?.diagnosis_entries) ? [...a.diagnosis_entries].sort((x:any,y:any)=>(x.rank||99)-(y.rank||99))[0]?.raw_text || null : null;
+      const pickTop1Id = (a:any)=> Array.isArray(a?.diagnosis_entries) ? [...a.diagnosis_entries].sort((x:any,y:any)=>(x.rank||99)-(y.rank||99))[0]?.diagnosis_term_id ?? null : null;
+      if(pre && !hasPre){ caseAny.pre_top1_raw_text = pickTop1Text(pre) || undefined; caseAny.pre_top1_diagnosis_term_id = pickTop1Id(pre) || undefined; }
+      if(post && !hasPost){ caseAny.post_top1_raw_text = pickTop1Text(post) || undefined; caseAny.post_top1_diagnosis_term_id = pickTop1Id(post) || undefined; }
+    } catch(_) { /* ignore */ }
+  }
+  // Fallback: fetch all assessments for user+block and join by case_id via assignment mapping
+  try {
+    const missing = (report.cases as any[]).filter(c=>!(c.pre_top1_raw_text || c.pre_top1_diagnosis_term_id) || !(c.post_top1_raw_text || c.post_top1_diagnosis_term_id));
+    const uid = userStore.user?.id;
+    if(missing.length && typeof uid === 'number'){
+      const all = await listBlockAssessments(uid, block);
+      const assignmentToCase: Record<number, number> = {};
+      for(const c of report.cases){
+        const ids:number[] = [];
+        ['assignment_id','pre_assignment_id','post_assignment_id'].forEach(k=>{ if(typeof (c as any)[k] === 'number') ids.push((c as any)[k]); });
+        ids.forEach(id=>{ assignmentToCase[id] = (c as any).case_id; });
+      }
+      // Add mapping from store assignments for this block as well
+      const storeAssignments:any[] = gamesStore.getBlockAssignments(block) as any[];
+      if(Array.isArray(storeAssignments)){
+        for(const a of storeAssignments){ if(typeof a?.id==='number' && typeof a?.case_id==='number') assignmentToCase[a.id] = a.case_id; }
+      }
+      const byCase: Record<string, { pre?: any; post?: any }> = {};
+      const pickTop1Text = (a:any)=> Array.isArray(a?.diagnosis_entries) ? [...a.diagnosis_entries].sort((x:any,y:any)=>(x.rank||99)-(y.rank||99))[0]?.raw_text || null : null;
+      const pickTop1Id = (a:any)=> Array.isArray(a?.diagnosis_entries) ? [...a.diagnosis_entries].sort((x:any,y:any)=>(x.rank||99)-(y.rank||99))[0]?.diagnosis_term_id ?? null : null;
+      for(const a of all){
+        const cid = assignmentToCase[a.assignment_id];
+        if(!cid) continue;
+        const bucket = (byCase[cid] ||= {} as any);
+        if(a.phase==='PRE') bucket.pre = a; else if(a.phase==='POST') bucket.post = a;
+      }
+      // Fallback: positional zipping by assignment id order if no mapping resolved
+      if(Object.keys(byCase).length === 0 && all.length){
+        const groups: Record<number, { pre?: any; post?: any }> = {};
+        for(const a of all){
+          const g = (groups[a.assignment_id] ||= {} as any);
+          if(a.phase==='PRE') g.pre = a; else if(a.phase==='POST') g.post = a;
+        }
+        const groupArr = Object.keys(groups).map(k=>({ key: Number(k), ...groups[Number(k)] }))
+          .sort((a,b)=>a.key-b.key);
+        const pickTop1Text = (a:any)=> Array.isArray(a?.diagnosis_entries) ? [...a.diagnosis_entries].sort((x:any,y:any)=>(x.rank||99)-(y.rank||99))[0]?.raw_text || null : null;
+        const pickTop1Id = (a:any)=> Array.isArray(a?.diagnosis_entries) ? [...a.diagnosis_entries].sort((x:any,y:any)=>(x.rank||99)-(y.rank||99))[0]?.diagnosis_term_id ?? null : null;
+        const n = Math.min(report.cases.length, groupArr.length);
+        for(let i=0;i<n;i++){
+          const caseAny:any = report.cases[i];
+          const g = groupArr[i];
+          if(!(caseAny.pre_top1_raw_text || caseAny.pre_top1_diagnosis_term_id) && g.pre){
+            caseAny.pre_top1_raw_text = pickTop1Text(g.pre) || undefined;
+            caseAny.pre_top1_diagnosis_term_id = pickTop1Id(g.pre) || undefined;
+          }
+          if(!(caseAny.post_top1_raw_text || caseAny.post_top1_diagnosis_term_id) && g.post){
+            caseAny.post_top1_raw_text = pickTop1Text(g.post) || undefined;
+            caseAny.post_top1_diagnosis_term_id = pickTop1Id(g.post) || undefined;
+          }
+        }
+      }
+      for(const c of report.cases){
+        const caseAny:any = c;
+        const bucket = byCase[caseAny.case_id];
+        if(!bucket) continue;
+        if(!(caseAny.pre_top1_raw_text || caseAny.pre_top1_diagnosis_term_id) && bucket.pre){
+          caseAny.pre_top1_raw_text = pickTop1Text(bucket.pre) || undefined;
+          caseAny.pre_top1_diagnosis_term_id = pickTop1Id(bucket.pre) || undefined;
+        }
+        if(!(caseAny.post_top1_raw_text || caseAny.post_top1_diagnosis_term_id) && bucket.post){
+          caseAny.post_top1_raw_text = pickTop1Text(bucket.post) || undefined;
+          caseAny.post_top1_diagnosis_term_id = pickTop1Id(bucket.post) || undefined;
+        }
+      }
+    }
+  } catch(_) { /* ignore */ }
+}
 </script>
 
 <style scoped>

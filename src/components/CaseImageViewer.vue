@@ -2,14 +2,14 @@
   <Card class="mb-4">
     <template #title>
       <div class="flex align-items-center justify-content-between">
-        <span>Case #{{ caseId }} Images</span>
-        <Tag v-if="images && images.length" :value="images.length + ' image' + (images.length>1?'s':'')" severity="info" />
+        <span>测试#{{ caseId }}</span>
+        <Tag v-if="images && images.length" :value="images.length + ' 张图像'" severity="info" />
       </div>
     </template>
     <template #content>
       <div v-if="loading" class="text-center">
         <ProgressBar mode="indeterminate" style="height: .5em" />
-        <p>Loading images...</p>
+        <p>图像加载中…</p>
       </div>
       <div v-else-if="images && images.length > 0">
         <!-- Single image: show directly without carousel/navigation -->
@@ -26,7 +26,7 @@
         </Carousel>
       </div>
       <div v-else class="text-center">
-        <p>No images available for this case.</p>
+        <p>该病例暂无可用图像。</p>
       </div>
     </template>
   </Card>

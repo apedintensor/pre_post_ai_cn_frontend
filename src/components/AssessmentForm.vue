@@ -1,14 +1,14 @@
 <template>
   <Card>
     <template #title>
-      {{ isPostAiPhase ? 'Post-AI Assessment' : 'Pre-AI Assessment' }}
+      {{ isPostAiPhase ? $t('case.postTitle') : $t('case.preTitle') }}
     </template>
     <template #content>
       <form @submit.prevent="$emit('submit-form')">
-        <Fieldset legend="Diagnoses" class="mb-4">
+        <Fieldset :legend="$t('case.sectionDiagnoses')" class="mb-4">
           <!-- Post-AI: Change Primary Diagnosis question moved here -->
           <div v-if="isPostAiPhase" class="field mb-3 change-diagnosis-toggle">
-            <label id="changeDiagnosis-label" class="font-medium mb-2">Did AI suggestions change your primary diagnosis?</label>
+            <label id="changeDiagnosis-label" class="font-medium mb-2">{{ $t('case.changeDiagQuestion') }}</label>
             <SelectButton id="changeDiagnosis"
                           name="changeDiagnosis"
                           v-model="formData.changeDiagnosis"
@@ -21,55 +21,52 @@
                           :allowEmpty="false"
                           :class="{'p-invalid': submitted && formData.changeDiagnosis === null}"
                           required
-                          v-tooltip.bottom="changeDiagnosisTooltipText" />
-            <small v-if="submitted && formData.changeDiagnosis === null" class="p-error mt-2">This field is required.</small>
-            <small v-else-if="showChangeDiagnosisPrompt" class="p-warning mt-2">You indicated the diagnosis changed. Please update the Primary Diagnosis field below to the new diagnosis.</small>
+                          v-tooltip.bottom="t('case.changeDiagQuestion')" />
+            <small v-if="submitted && formData.changeDiagnosis === null" class="p-error mt-2">{{ $t('common.required') }}</small>
+            <small v-else-if="showChangeDiagnosisPrompt" class="p-warning mt-2">{{ $t('case.changeDiagPrompt') }}</small>
           </div>
           <div class="grid formgrid">
             <div class="field col-12">
-              <label id="diag1-label">Primary Diagnosis (Rank 1)</label>
-              <DiagnosisAutocomplete
+              <label id="diag1-label">{{ $t('case.primaryDiagnosis') }}</label>
+              <input
                 id="diag1"
+                class="da-input"
                 v-model="diagnosisRank1Proxy"
-                :minChars="2"
-                :maxResults="8"
-                placeholder="Type to search (supports synonyms & typos)"
-                @select="term => handleSelect(term, 1)"
+                type="text"
+                :placeholder="$t('case.freeTextPlaceholder')"
                 :disabled="submitting"
               />
-              <small v-if="submitted && !formData.diagnosisRank1Text" class="p-error">Primary diagnosis required.</small>
+              <small v-if="submitted && !formData.diagnosisRank1Text" class="p-error">{{ $t('case.validationPrimaryRequired') }}</small>
             </div>
             <div class="field col-12 md:col-6">
-              <label id="diag2-label">Differential (Rank 2, optional)</label>
-              <DiagnosisAutocomplete
+              <label id="diag2-label">{{ $t('case.differential2') }}</label>
+              <input
                 id="diag2"
+                class="da-input"
                 v-model="diagnosisRank2Proxy"
-                :minChars="2"
-                :maxResults="8"
-                placeholder="Optional secondary"
-                @select="term => handleSelect(term, 2)"
+                type="text"
+                :placeholder="$t('common.optional')"
                 :disabled="submitting"
               />
             </div>
             <div class="field col-12 md:col-6">
-              <label id="diag3-label">Differential (Rank 3, optional)</label>
-              <DiagnosisAutocomplete
+              <label id="diag3-label">{{ $t('case.differential3') }}</label>
+              <input
                 id="diag3"
+                class="da-input"
                 v-model="diagnosisRank3Proxy"
-                :minChars="2"
-                :maxResults="8"
-                placeholder="Optional tertiary"
-                @select="term => handleSelect(term, 3)"
+                type="text"
+                :placeholder="$t('common.optional')"
                 :disabled="submitting"
               />
             </div>
           </div>
         </Fieldset>
 
-        <Fieldset legend="Management Choices" class="mb-4">
+        <Fieldset :legend="$t('case.sectionManagement')" class="mb-4">
           <!-- Post-AI: Change Management question moved here -->
           <div v-if="isPostAiPhase" class="field mb-3 change-management-toggle">
-            <label id="changeManagement-label" class="font-medium mb-2">Did AI suggestions change your management plan?</label>
+            <label id="changeManagement-label" class="font-medium mb-2">{{ $t('case.changeMgmtQuestion') }}</label>
             <SelectButton id="changeManagement" name="changeManagement" v-model="formData.changeManagement"
                           @update:modelValue="onChangeManagementUserToggle"
                           :options="changeOptions"
@@ -80,28 +77,28 @@
                           :allowEmpty="false"
                           :class="{'p-invalid': submitted && formData.changeManagement === null}"
                           required
-                          v-tooltip.bottom="changeManagementTooltipText" />
-            <small v-if="submitted && formData.changeManagement === null" class="p-error mt-2">This field is required.</small>
-            <small v-else-if="showChangeManagementPrompt" class="p-warning mt-2">You indicated the management plan changed. Please update the selections below to reflect your new plan.</small>
+                          v-tooltip.bottom="t('case.changeMgmtQuestion')" />
+            <small v-if="submitted && formData.changeManagement === null" class="p-error mt-2">{{ $t('common.required') }}</small>
+            <small v-else-if="showChangeManagementPrompt" class="p-warning mt-2">{{ $t('case.changeMgmtPrompt') }}</small>
           </div>
           <div class="grid formgrid aligned-grid mgmt-grid">
             <div class="field col-12 md:col-6 centered-field">
-              <label>Would you do any further investigations to confirm the diagnosis?</label>
+              <label>{{ $t('case.investigationLabel') }}</label>
               <SelectButton v-model="formData.investigationPlan" :options="investigationOptions" optionLabel="label" optionValue="value" class="w-full" :class="{'p-invalid': submitted && !formData.investigationPlan}" />
-              <small v-if="submitted && !formData.investigationPlan" class="p-error">Select one option.</small>
+              <small v-if="submitted && !formData.investigationPlan" class="p-error">{{ $t('common.selectOne') }}</small>
             </div>
             <div class="field col-12 md:col-6 centered-field">
-              <label>What would your next step be?</label>
+              <label>{{ $t('case.nextStepLabel') }}</label>
               <SelectButton v-model="formData.nextStep" :options="nextStepOptions" optionLabel="label" optionValue="value" class="w-full" :class="{'p-invalid': submitted && !formData.nextStep}" />
-              <small v-if="submitted && !formData.nextStep" class="p-error">Select one option.</small>
+              <small v-if="submitted && !formData.nextStep" class="p-error">{{ $t('common.selectOne') }}</small>
             </div>
           </div>
         </Fieldset>
 
-        <Fieldset legend="Confidence & Certainty" class="mb-4">
+        <Fieldset :legend="$t('case.sectionConfidence')" class="mb-4">
           <div class="grid formgrid aligned-grid">
             <div class="field col-12 md:col-6 centered-field">
-              <label id="confidence-label">Confidence in Top Diagnosis (1-5)</label>
+              <label id="confidence-label">{{ $t('case.confidenceLabel') }}</label>
               <SelectButton id="confidence"
                             name="confidence"
                             v-model="formData.confidenceScore"
@@ -113,7 +110,7 @@
                             v-tooltip.bottom="getConfidenceLabel(formData.confidenceScore || 0)" />
             </div>
             <div class="field col-12 md:col-6 centered-field">
-              <label id="certainty-label">Certainty of Management Plan (1-5)</label>
+              <label id="certainty-label">{{ $t('case.certaintyLabel') }}</label>
               <SelectButton id="certainty"
                             name="certainty"
                             v-model="formData.certaintyScore"
@@ -132,20 +129,20 @@
         <!-- Post-AI Specific Questions -->
         <div v-if="isPostAiPhase">
           <Divider />
-          <Fieldset legend="AI Impact Assessment" class="mt-4 mb-4 ai-impact">
+          <Fieldset :legend="$t('case.aiImpact')" class="mt-4 mb-4 ai-impact">
             <div class="grid formgrid ai-impact-grid">
               <div class="field col-12">
-                <label id="aiUsefulness-label">How useful were the AI suggestions?</label>
+                <label id="aiUsefulness-label">{{ $t('case.aiUsefulLabel') }}</label>
                 <SelectButton id="aiUsefulness" name="aiUsefulness" v-model="formData.aiUsefulness"
-                              :options="aiUsefulnessOptions"
+                              :options="aiUsefulnessOpts"
                               optionLabel="label"
                               optionValue="value"
                               class="w-full"
                               :aria-labelledby="'aiUsefulness-label'"
                               :class="{'p-invalid': submitted && !formData.aiUsefulness}"
                               required
-                              v-tooltip.bottom="'Rate the overall usefulness of the AI suggestions provided.'" />
-                <small v-if="submitted && !formData.aiUsefulness" class="p-error">This field is required.</small>
+                              v-tooltip.bottom="t('case.aiUsefulLabel')" />
+                <small v-if="submitted && !formData.aiUsefulness" class="p-error">{{ $t('common.required') }}</small>
               </div>
             </div>
           </Fieldset>
@@ -153,13 +150,13 @@
 
         <div class="col-12 mt-4">
           <Button type="submit"
-                  :label="submitting ? 'Submitting...' : (isPostAiPhase ? 'Complete Assessment' : 'Submit & View AI Suggestions')"
+                  :label="submitting ? $t('common.submitting') : (isPostAiPhase ? $t('case.submitPost') : $t('case.submitPre'))"
                   :icon="submitting ? 'pi pi-spin pi-spinner' : (isPostAiPhase ? 'pi pi-check-circle' : 'pi pi-arrow-right')"
                   :severity="isPostAiPhase ? 'success' : 'primary'"
                   class="w-full p-3"
                   :loading="submitting"
                   :disabled="submitting"
-                  v-tooltip.bottom="isPostAiPhase ? 'Finalize your assessment for this case after reviewing AI suggestions.' : 'Submit your initial assessment and then view AI-generated suggestions.'" />
+                  v-tooltip.bottom="isPostAiPhase ? t('case.submitPost') : t('case.submitPre')" />
         </div>
       </form>
     </template>
@@ -170,14 +167,12 @@
 import Card from 'primevue/card';
 import Fieldset from 'primevue/fieldset';
 import SelectButton from 'primevue/selectbutton';
-import DiagnosisAutocomplete from './DiagnosisAutocomplete.vue';
 import { ref, computed, watch } from 'vue';
 import Button from 'primevue/button';
 import Divider from 'primevue/divider';
+import { useI18n } from 'vue-i18n';
 
-// Define tooltip texts
-const changeDiagnosisTooltipText = "Indicate if the AI's suggestions led you to change your primary diagnosis.";
-const changeManagementTooltipText = "Indicate if the AI's suggestions led you to change your management plan.";
+const { t } = useI18n();
 
 // Interfaces for props
 interface DiagnosisTermRead {
@@ -227,13 +222,7 @@ const props = defineProps<{
   getCertaintyLabel: (score: number) => string;
 }>();
 
-const emit = defineEmits(['submit-form', 'select-diagnosis']);
-
-// Capture selected canonical objects for potential POST; emit upward too
-interface DiagnosisTermSuggestion { id: number; name: string; synonyms: string[] }
-const selectedRank1 = ref<DiagnosisTermSuggestion | null>(null);
-const selectedRank2 = ref<DiagnosisTermSuggestion | null>(null);
-const selectedRank3 = ref<DiagnosisTermSuggestion | null>(null);
+const emit = defineEmits(['submit-form']);
 
 // Track whether the user manually toggled the change flags (vs. auto-set by parent)
 const changeDiagnosisSelectedByUser = ref(false);
@@ -306,12 +295,7 @@ watch(() => [props.formData.investigationPlan, props.formData.nextStep], () => {
   }
 });
 
-function handleSelect(term: DiagnosisTermSuggestion, rank: 1 | 2 | 3) {
-  if (rank === 1) selectedRank1.value = term;
-  else if (rank === 2) selectedRank2.value = term;
-  else selectedRank3.value = term;
-  emit('select-diagnosis', { rank, term });
-}
+// Free-text mode: no selection handler needed
 
 function onChangeDiagnosisUserToggle() {
   changeDiagnosisSelectedByUser.value = true;
@@ -321,17 +305,23 @@ function onChangeManagementUserToggle() {
   changeManagementSelectedByUser.value = true;
 }
 
-const investigationOptions = [
-  { label: 'None', value: 'none' },
-  { label: 'Biopsy', value: 'biopsy' },
-  { label: 'Other', value: 'other' }
-];
+const investigationOptions = computed(() => ([
+  { label: t('case.investigationNone'), value: 'none' },
+  { label: t('case.investigationBiopsy'), value: 'biopsy' },
+  { label: t('case.investigationOther'), value: 'other' }
+]));
 
-const nextStepOptions = [
-  { label: 'Reassure', value: 'reassure' },
-  { label: 'Manage myself', value: 'manage' },
-  { label: 'Refer', value: 'refer' }
-];
+const nextStepOptions = computed(() => ([
+  { label: t('case.nextReassure'), value: 'reassure' },
+  { label: t('case.nextManage'), value: 'manage' },
+  { label: t('case.nextRefer'), value: 'refer' }
+]));
+
+const aiUsefulnessOpts = computed(() => props.aiUsefulnessOptions ?? ([
+  { label: t('case.aiUsefulVery'), value: 'very' },
+  { label: t('case.aiUsefulSome'), value: 'some' },
+  { label: t('case.aiUsefulNot'), value: 'not' }
+]));
 
 // Null-safe proxies for autocomplete (component expects string)
 const diagnosisRank1Proxy = computed({
@@ -465,4 +455,18 @@ const diagnosisRank3Proxy = computed({
   text-align: center;
   justify-content: center;
 }
+
+/* Reuse the original autocomplete input visual style */
+.da-input {
+  width: 100%;
+  padding: .5rem .65rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  font-size: .95rem;
+  background: var(--bg-surface-card);
+  color: var(--text-color);
+  transition: background .15s, color .15s, border-color .15s;
+}
+.da-input::placeholder { color: var(--text-color-muted); opacity: .75; }
+.da-input:focus { outline: 2px solid var(--accent-primary); outline-offset: 1px; border-color: var(--accent-primary); }
 </style>

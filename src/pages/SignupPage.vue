@@ -5,8 +5,8 @@
       <Card class="surface-card shadow-2 border-round p-4">
         <template #title>
           <div class="text-center mb-5">
-            <div class="text-900 text-3xl font-medium mb-3">Create Account</div>
-            <span class="text-600 font-medium">Join the reader study</span>
+            <div class="text-900 text-3xl font-medium mb-3">创建账号</div>
+            <span class="text-600 font-medium">加入读片研究</span>
           </div>
         </template>
         <template #content>
@@ -14,7 +14,7 @@
             <div class="grid form-grid">
               <!-- Email Field -->
               <div class="col-12">
-                <label for="email" class="field-label">Email</label>
+                <label for="email" class="field-label">邮箱</label>
                 <div class="input-wrapper">
                   <i class="pi pi-envelope" />
                   <InputText
@@ -29,7 +29,7 @@
 
               <!-- Password Field -->
               <div class="col-12">
-                <label for="password" class="field-label">Password</label>
+                <label for="password" class="field-label">密码</label>
                 <div class="input-wrapper">
                   <i class="pi pi-lock" />
                   <Password
@@ -46,7 +46,7 @@
 
               <!-- Age Field (captured locally; backend uses age_bracket only) -->
               <div class="col-12 md:col-6">
-                <label for="age" class="field-label with-icon"><i class="pi pi-user" /> Age</label>
+                <label for="age" class="field-label with-icon"><i class="pi pi-user" /> 年龄</label>
                 <InputNumber
                   id="age"
                   v-model="formData.age"
@@ -60,7 +60,7 @@
               </div>
 
               <div class="col-12 md:col-6">
-                <label for="exp" class="field-label with-icon"><i class="pi pi-briefcase" /> Years Clinical Experience</label>
+                <label for="exp" class="field-label with-icon"><i class="pi pi-briefcase" /> 临床工作年限</label>
                 <InputNumber 
                   id="exp" 
                   v-model="formData.years_experience" 
@@ -73,7 +73,7 @@
               </div>
 
               <div class="col-12 md:col-6">
-                <label for="dermExp" class="field-label with-icon"><i class="pi pi-sparkles" /> Years Dermatology Experience</label>
+                <label for="dermExp" class="field-label with-icon"><i class="pi pi-sparkles" /> 皮肤科从业年限</label>
                 <InputNumber 
                   id="dermExp" 
                   v-model="formData.years_derm_experience" 
@@ -87,7 +87,7 @@
 
               <!-- Gender Field -->
               <div class="col-12 md:col-6">
-                <label for="gender" class="field-label with-icon"><i class="pi pi-users" /> Gender</label>
+                <label for="gender" class="field-label with-icon"><i class="pi pi-users" /> 性别</label>
                 <Dropdown 
                   id="gender"
                   v-model="formData.gender"
@@ -95,13 +95,13 @@
                   optionLabel="label"
                   optionValue="value"
                   class="w-full"
-                  placeholder="Select gender"
+                  placeholder="选择性别"
                   :required="true"
                 />
               </div>
 
               <div class="col-12 md:col-6">
-                <label for="role" class="field-label with-icon"><i class="pi pi-id-card" /> Professional Role</label>
+                <label for="role" class="field-label with-icon"><i class="pi pi-id-card" /> 职业角色</label>
                 <Dropdown 
                   id="role" 
                   v-model="formData.role_id" 
@@ -111,14 +111,14 @@
                   class="w-full"
                   :loading="rolesLoading"
                   :disabled="rolesLoading || roles.length === 0"
-                  placeholder="Select role"
+                  placeholder="选择角色"
                   :required="roles.length > 0"
                 />
               </div>
 
               <!-- Country Field -->
               <div class="col-12 md:col-6">
-                <label for="country" class="field-label with-icon"><i class="pi pi-globe" /> Country</label>
+                <label for="country" class="field-label with-icon"><i class="pi pi-globe" /> 国家/地区</label>
                 <Dropdown 
                   id="country"
                   v-model="formData.country_code"
@@ -128,21 +128,21 @@
                   class="w-full"
                   :loading="countriesLoading"
                   :disabled="countriesLoading || countries.length === 0"
-                  placeholder="Select country"
+                  placeholder="选择国家/地区"
                   filter
                   :required="countries.length > 0"
                 />
-                <small v-if="countriesLoading" class="u-text-muted">Loading countries…</small>
+                <small v-if="countriesLoading" class="u-text-muted">国家/地区加载中…</small>
                 <div v-else-if="countries.length === 0" class="mt-1">
-                  <small class="u-text-muted mr-2">Countries couldn't load.</small>
-                  <Button type="button" label="Retry" size="small" text @click="retryCountries" />
+                  <small class="u-text-muted mr-2">国家/地区列表加载失败。</small>
+                  <Button type="button" label="重试" size="small" text @click="retryCountries" />
                 </div>
               </div>
 
               <div class="col-12">
                 <Button 
                   type="submit" 
-                  :label="loading ? 'Creating account...' : 'Create account'" 
+                  :label="loading ? '正在创建账号…' : '创建账号'" 
                   :loading="loading"
                   severity="primary"
                   class="w-full p-3 mt-2"
@@ -150,12 +150,12 @@
 
                 <div class="text-center mt-4">
                   <Divider align="center" class="auth-divider">
-                    <span class="divider-label">Already have an account?</span>
+                    <span class="divider-label">已经有账号？</span>
                   </Divider>
                   <router-link to="/login" class="no-underline">
                     <Button 
                       type="button" 
-                      label="Sign in instead" 
+                      label="去登录" 
                       severity="secondary" 
                       outlined
                       class="w-full p-3"
@@ -219,9 +219,9 @@ const countries = ref<Country[]>([]);
 
 // Gender options — restricted per backend: Male, Female, Other
 const genderOptions = [
-  { label: 'Male', value: 'Male' },
-  { label: 'Female', value: 'Female' },
-  { label: 'Other', value: 'Other' }
+  { label: '男', value: 'Male' },
+  { label: '女', value: 'Female' },
+  { label: '其他', value: 'Other' }
 ];
 
 // (gender field removed)
@@ -253,20 +253,20 @@ onMounted(async () => {
       roles.value = rolesRes.value.data;
     } else {
       console.warn('Failed to fetch roles:', rolesRes.reason);
-      toast.add({ severity: 'warn', summary: 'Roles', detail: 'Could not load roles.', life: 2500 });
+  toast.add({ severity: 'warn', summary: '角色', detail: '无法加载角色列表。', life: 2500 });
     }
 
     // Countries result handling with fallback to /countries (no /api) if needed
     if (countriesRes.status === 'fulfilled') {
       countries.value = normalizeCountries(countriesRes.value.data);
     } else {
-      console.warn('Failed to fetch /api/countries, trying /countries ...', countriesRes.reason);
+  console.warn('Failed to fetch /api/countries, trying /countries ...', countriesRes.reason);
       try {
         const fallback = await apiClient.get('/countries');
         countries.value = normalizeCountries(fallback.data);
       } catch (fallbackErr) {
-        console.warn('Failed to fetch countries fallback:', fallbackErr);
-        toast.add({ severity: 'warn', summary: 'Countries', detail: 'Could not load countries.', life: 2500 });
+  console.warn('Failed to fetch countries fallback:', fallbackErr);
+  toast.add({ severity: 'warn', summary: '国家/地区', detail: '无法加载国家/地区列表。', life: 2500 });
       }
     }
   } finally {
@@ -285,7 +285,7 @@ async function retryCountries(){
       const fb = await apiClient.get('/countries');
       countries.value = normalizeCountries(fb.data);
     } catch (e) {
-      toast.add({ severity:'warn', summary:'Countries', detail:'Retry failed. Try again later.', life:2500 });
+  toast.add({ severity:'warn', summary:'国家/地区', detail:'重试失败，请稍后再试。', life:2500 });
     }
   } finally {
     countriesLoading.value = false;
@@ -315,29 +315,28 @@ const handleSignup = async () => {
     // Use the correct endpoint from openapi.json
     await apiClient.post('/api/auth/register', payload);
 
-    toast.add({ severity: 'success', summary: 'Signup Successful', detail: 'Please log in.', life: 3000 });
+  toast.add({ severity: 'success', summary: '注册成功', detail: '请登录。', life: 3000 });
     router.push('/login');
 
   } catch (error: any) {
     console.error("Signup error:", error);
-    let detail = 'Signup failed. Please check your input.';
+  let detail = '注册失败，请检查输入内容。';
     if (error.response?.data?.detail) {
         if (typeof error.response.data.detail === 'string') {
             // Handle simple string errors like "REGISTER_USER_ALREADY_EXISTS"
-            detail = error.response.data.detail.replace(/_/g, ' ').toLowerCase();
-            detail = detail.charAt(0).toUpperCase() + detail.slice(1) + '.';
+            detail = error.response.data.detail.replace(/_/g, ' ');
         } else if (Array.isArray(error.response.data.detail)) {
             // Handle FastAPI validation errors (HTTP 422)
-            detail = error.response.data.detail.map((err: any) => `${err.loc.join('.')} - ${err.msg}`).join('; ');
+            detail = error.response.data.detail.map((err: any) => `${err.loc.join('.')} - ${err.msg}`).join('；');
         } else if (typeof error.response.data.detail === 'object' && error.response.data.detail.code === 'REGISTER_INVALID_PASSWORD') {
              // Handle specific password error structure
-             detail = `Password validation failed: ${error.response.data.detail.reason}`;
+             detail = `密码不符合要求：${error.response.data.detail.reason}`;
         } else if (typeof error.response.data.detail === 'object') {
              // Fallback for other object details
              detail = JSON.stringify(error.response.data.detail);
         }
     }
-    toast.add({ severity: 'error', summary: 'Signup Failed', detail: detail, life: 5000 });
+  toast.add({ severity: 'error', summary: '注册失败', detail: detail, life: 5000 });
   } finally {
     loading.value = false;
   }

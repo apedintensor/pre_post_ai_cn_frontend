@@ -5,8 +5,8 @@
       <Card class="shadow-2">
         <template #title>
           <div class="text-center mb-5">
-            <div class="text-900 text-3xl font-medium mb-3">Welcome Back</div>
-            <span class="text-600 font-medium line-height-3">Sign in to continue to the Reader Study</span>
+            <div class="text-900 text-3xl font-medium mb-3">{{ $t('auth.welcomeBack') }}</div>
+            <span class="text-600 font-medium line-height-3">{{ $t('auth.signInContinue') }}</span>
           </div>
         </template>
         <template #content>
@@ -17,14 +17,14 @@
                 <i class="pi pi-envelope text-500" />
                 <InputText
                   v-model="formData.email"
-                  placeholder="Email"
+                  :placeholder="$t('auth.email')"
                   class="w-full border-none shadow-none"
                   :class="{ 'p-invalid': submitted && !formData.email }"
-                  aria-label="Email"
+                  :aria-label="$t('auth.email')"
                   required
                 />
               </div>
-              <small v-if="submitted && !formData.email" class="p-error">Email is required</small>
+              <small v-if="submitted && !formData.email" class="p-error">{{ $t('auth.emailRequired') }}</small>
             </div>
 
             <!-- Password -->
@@ -33,22 +33,22 @@
                 <i class="pi pi-lock text-500" />
                 <Password
                   v-model="formData.password"
-                  placeholder="Password"
+                  :placeholder="$t('auth.password')"
                   :toggleMask="true"
                   :feedback="false"
                   class="w-full border-none shadow-none"
                   :class="{ 'p-invalid': submitted && !formData.password }"
-                  aria-label="Password"
+                  :aria-label="$t('auth.password')"
                   required
                 />
               </div>
-              <small v-if="submitted && !formData.password" class="p-error">Password is required</small>
+              <small v-if="submitted && !formData.password" class="p-error">{{ $t('auth.passwordRequired') }}</small>
             </div>
 
             <div class="signin-btn-row">
               <Button 
                 type="submit" 
-                :label="loading ? 'Signing in...' : 'Sign in'" 
+                :label="loading ? $t('auth.signingIn') : $t('auth.signIn')" 
                 :icon="loading ? 'pi pi-spinner pi-spin' : 'pi pi-sign-in'"
                 :loading="loading" 
                 severity="primary"
@@ -59,12 +59,12 @@
 
             <div class="text-center">
               <Divider align="center" class="auth-divider">
-                <span class="divider-label">New here?</span>
+                <span class="divider-label">{{ $t('auth.newHere') }}</span>
               </Divider>
               <router-link to="/signup" class="no-underline">
                 <Button 
                   type="button" 
-                  label="Create an account" 
+                  :label="$t('auth.createAccount')" 
                   icon="pi pi-user-plus"
                   severity="secondary" 
                   outlined
@@ -91,6 +91,7 @@ import Button from 'primevue/button';
 import Divider from 'primevue/divider';
 import Toast from 'primevue/toast';
 import apiClient from '../api';
+import { useI18n } from 'vue-i18n';
 
 const router = useRouter();
 const toast = useToast();
@@ -102,6 +103,7 @@ const formData = reactive({
 });
 const submitted = ref(false);
 const loading = ref(false);
+const { t } = useI18n();
 
 const handleLogin = async () => {
   loading.value = true;
@@ -124,10 +126,10 @@ const handleLogin = async () => {
       const userFetched = await userStore.fetchCurrentUser();
 
       if (userFetched) {
-        toast.add({ severity: 'success', summary: 'Login Successful', life: 3000 });
+        toast.add({ severity: 'success', summary: t('auth.loginSuccess'), life: 3000 });
         router.push('/');
       } else {
-        toast.add({ severity: 'error', summary: 'Login Failed', detail: 'Could not fetch user details.', life: 3000 });
+        toast.add({ severity: 'error', summary: t('auth.loginFailed'), detail: t('auth.loginFailedDetail'), life: 3000 });
         userStore.logout();
       }
     } else {
@@ -135,8 +137,9 @@ const handleLogin = async () => {
     }
   } catch (error: any) {
     console.error("Login error:", error);
-    const detail = error.response?.data?.detail || 'Login failed. Please check your credentials.';
-    toast.add({ severity: 'error', summary: 'Login Failed', detail: detail, life: 3000 });
+    const fallback = t('auth.loginFailedDetail');
+    const detail = error.response?.data?.detail || fallback;
+    toast.add({ severity: 'error', summary: t('auth.loginFailed'), detail: detail, life: 3000 });
     userStore.clearAuth();
   } finally {
     loading.value = false;

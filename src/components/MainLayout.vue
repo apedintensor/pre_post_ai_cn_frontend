@@ -3,7 +3,7 @@
     <Menubar class="layout-topbar">
       <template #start>
         <router-link to="/" class="flex align-items-center no-underline">
-          <span class="text-xl font-bold text-primary">Reader Study</span>
+          <span class="text-xl font-bold text-primary">{{ $t('layout.appTitle') }}</span>
         </router-link>
       </template>
 
@@ -20,7 +20,7 @@
       severity="secondary"
       text
       class="p-button-sm"
-      v-tooltip.left="'Logout'"
+      v-tooltip.left="$t('layout.logout')"
       @click="handleLogout" />
   </div>
       </template>
@@ -38,6 +38,7 @@ import { useRouter } from 'vue-router';
 import { useUserStore } from '../stores/userStore';
 import Menubar from 'primevue/menubar';
 import Button from 'primevue/button';
+import { useI18n } from 'vue-i18n';
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -48,6 +49,7 @@ const userEmail = computed(() => userStore.user?.email);
 // Theme handling -------------------------------------------------
 const THEME_KEY = 'color-scheme'; // 'light' | 'dark'
 const isDark = ref(false);
+const { t } = useI18n();
 
 function applyMode(mode: 'light'|'dark') {
   isDark.value = mode === 'dark';
@@ -63,7 +65,7 @@ function initTheme() {
 }
 
 const themeIcon = computed(() => isDark.value ? 'pi pi-moon' : 'pi pi-sun');
-const themeTooltip = computed(() => isDark.value ? 'Dark mode (click to switch to Light)' : 'Light mode (click to switch to Dark)');
+const themeTooltip = computed(() => isDark.value ? t('layout.themeDark') : t('layout.themeLight'));
 
 function toggleTheme() {
   applyMode(isDark.value ? 'light' : 'dark');

@@ -10,7 +10,7 @@
           <template #title>
             <div class="flex align-items-center">
               <i class="pi pi-chart-bar text-xl mr-2"></i>
-              <span class="text-xl font-medium">Game Progress</span>
+              <span class="text-xl font-medium">{{ $t('dashboard.gameProgress') }}</span>
             </div>
           </template>
           <template #content>
@@ -20,7 +20,7 @@
                   <div class="metric-row">
                     <div class="metric-head">
                       <i class="pi pi-list"></i>
-                      <span class="label">Total Cases</span>
+                      <span class="label">{{ $t('dashboard.totalCases') }}</span>
                     </div>
                     <span class="value">{{ loading ? '—' : totalCases }}</span>
                   </div>
@@ -32,7 +32,7 @@
                   <div class="metric-row">
                     <div class="metric-head">
                       <i class="pi pi-check-circle text-green-500"></i>
-                      <span class="label">Completed</span>
+                      <span class="label">{{ $t('dashboard.completedCases') }}</span>
                     </div>
                     <span class="value">{{ loading ? '—' : completedCount }}</span>
                   </div>
@@ -44,7 +44,7 @@
                   <div class="metric-row">
                     <div class="metric-head">
                       <i class="pi pi-clock text-orange-500"></i>
-                      <span class="label">Remaining</span>
+                      <span class="label">{{ $t('dashboard.remainingCases') }}</span>
                     </div>
                     <span class="value">{{ loading ? '—' : remainingCount }}</span>
                   </div>
@@ -57,7 +57,7 @@
                   <div class="flex justify-content-between align-items-center mb-3">
                     <div class="flex align-items-center">
                       <i class="pi pi-chart-line text-primary mr-2"></i>
-                      <span class="text-900 font-medium">Overall Progress</span>
+                      <span class="text-900 font-medium">{{ $t('dashboard.overallProgress') }}</span>
                     </div>
                     <Tag :value="Math.round(completionPercentage) + '%'" 
                          :severity="completionPercentage === 100 ? 'success' : 'info'"
@@ -95,6 +95,7 @@ import ProgressBar from 'primevue/progressbar';
 import Toast from 'primevue/toast';
 // import InputText removed
 import { useToast } from 'primevue/usetoast';
+import { useI18n } from 'vue-i18n';
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -102,6 +103,7 @@ const caseStore = useCaseStore();
 // gameStore removed (cases list deleted)
 const gamesStore = useGamesStore();
 const toast = useToast();
+const { t } = useI18n();
 
 const loading = ref(true);
 const cases = computed(() => caseStore.cases);
@@ -205,8 +207,8 @@ const loadAndDisplayProgress = async () => {
     console.error('Failed to load dashboard data:', error);
     toast.add({
       severity: 'error',
-      summary: 'Error',
-      detail: 'Failed to load data. Please try refreshing the page.',
+      summary: t('common.error'),
+      detail: t('report.loading'),
       life: 5000
     });
   } finally {

@@ -91,6 +91,26 @@ npm run dev
 
 This will typically start the application on `http://localhost:5173` (or another port if 5173 is in use).
 
+### Troubleshooting
+
+- 'vite' is not recognized: Install dependencies first so the local binary is available.
+    ```pwsh
+    npm ci  # or: npm install
+    npm run dev
+    ```
+- Node version: Vite 6 works best on Node 18+. If you see odd errors, check your version:
+    ```pwsh
+    node -v
+    ```
+- Change port (if 5173 is taken):
+    ```pwsh
+    npm run dev -- --port 5174
+    ```
+- Access from other devices on your LAN:
+    ```pwsh
+    npm run dev -- --host
+    ```
+
 ## Running Tests
 
 This project uses Cypress for end-to-end testing.

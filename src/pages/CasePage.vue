@@ -49,7 +49,7 @@ interface AIOutputRead {
 interface DiagnosisEntryCreateTS {
   rank: number;
   raw_text?: string | null;
-  diagnosis_term_id: number; // required, integer
+  diagnosis_term_id?: number | null; // free-text mode: optional
 }
 
 interface AssessmentCreate {
@@ -102,40 +102,26 @@ const submitted = ref(false);
 
 // --- State ---
 const images = ref<ImageRead[]>([]);
-const diagnosisTerms = ref<DiagnosisTermRead[]>([]);
+// Free-text mode: terms list no longer required
+// const diagnosisTerms = ref<DiagnosisTermRead[]>([]);
 const aiOutputs = ref<AIOutputRead[]>([]);
 const loading = ref(false);
 const submitting = ref(false);
 // Track if this case was last remaining when entered
 const wasFinalInBlock = ref(false);
 // Track selected diagnosis term objects (from autocomplete select events)
-const selectedDiagnosisByRank = reactive<Record<number, { id: number; name: string; synonyms?: string[] } | null>>({ 1: null, 2: null, 3: null });
-
-function onDiagnosisSelected(payload: { rank: number; term: { id: number; name: string; synonyms?: string[] } }) {
-  selectedDiagnosisByRank[payload.rank] = payload.term;
-  console.debug('Diagnosis selected', payload.rank, payload.term);
-}
+// Free-text mode: no selected canonical items
 
 function buildDiagnosisEntries(phase: 'PRE' | 'POST'): DiagnosisEntryCreateTS[] {
   const src = phase === 'PRE' ? preAiFormData : postAiFormData;
   const raw = [
-    { rank: 1, text: src.diagnosisRank1Text, sel: selectedDiagnosisByRank[1] },
-    { rank: 2, text: src.diagnosisRank2Text, sel: selectedDiagnosisByRank[2] },
-    { rank: 3, text: src.diagnosisRank3Text, sel: selectedDiagnosisByRank[3] }
+    { rank: 1, text: src.diagnosisRank1Text },
+    { rank: 2, text: src.diagnosisRank2Text },
+    { rank: 3, text: src.diagnosisRank3Text }
   ].filter(e => e.text && e.text.trim().length);
-  const mapped = raw.map(e => {
-    const lookupKey = (e.sel?.name || e.text || '').toLowerCase();
-    const fallback = diagnosisTerms.value.find(t => t.name.toLowerCase() === lookupKey);
-    // use nullish coalescing so id=0 is preserved
-    const id = (e.sel?.id ?? fallback?.id ?? null);
-    return { rank: e.rank, raw_text: e.text!.trim(), diagnosis_term_id: id as number | null };
-  });
-  console.debug('buildDiagnosisEntries mapped (pre-filter)', mapped);
-  const filtered = mapped.filter(m => Number.isInteger(m.diagnosis_term_id)) as { rank: number; raw_text: string; diagnosis_term_id: number; }[];
-  if (filtered.length !== mapped.length) {
-    console.debug('Filtered out diagnosis entries without a resolved term id', { mapped, filtered });
-  }
-  return filtered as DiagnosisEntryCreateTS[];
+  const mapped = raw.map(e => ({ rank: e.rank, raw_text: e.text!.trim(), diagnosis_term_id: null as any }));
+  console.debug('buildDiagnosisEntries (free-text)', mapped);
+  return mapped as unknown as DiagnosisEntryCreateTS[];
 }
 
 // --- Phase Detection ---
@@ -208,8 +194,8 @@ const gameProgressBarLabel = computed(() => {
   const total = 10;
   const preOnly = Math.max(0, pre - post);
   return preOnly > 0
-    ? `${post}/${total} completed • ${preOnly} pre-AI`
-    : `${post}/${total} completed`;
+    ? `${post}/${total} 已完成 • ${preOnly} 个仅完成 Pre-AI`
+    : `${post}/${total} 已完成`;
 });
 
 
@@ -243,15 +229,16 @@ const preAiLocalStorageKey = computed(() => `preAiFormData_${caseId.value}_${use
 const postAiLocalStorageKey = computed(() => `postAiFormData_${caseId.value}_${userId.value}`);
 
 // --- AI Usefulness Options ---
+// Labels localized to Chinese per request
 const aiUsefulnessOptions = ref([
-  { label: 'Very Useful', value: 'very' },
-  { label: 'Somewhat Useful', value: 'somewhat' },
-  { label: 'Not Useful', value: 'not' },
+  { label: '非常有用', value: 'very' },
+  { label: '较有用', value: 'somewhat' },
+  { label: '没什么用', value: 'not' },
 ]);
 
 const changeOptions = ref([
-  { label: 'Yes', value: true },
-  { label: 'No', value: false },
+  { label: '是', value: true },
+  { label: '否', value: false },
 ]);
 
 // Display highest confidence first (5 → 1)
@@ -274,11 +261,10 @@ const fetchData = async () => {
   try {
     const commonFetches = [
       apiClient.get<ImageRead[]>(`/api/images/case/${caseId.value}`),
-      apiClient.get<Case>(`/api/cases/${caseId.value}`),
-      apiClient.get<DiagnosisTermRead[]>('/api/diagnosis_terms/')
+      apiClient.get<Case>(`/api/cases/${caseId.value}`)
     ];
 
-    const [imagesResponse, caseResponse, termsResponse] = await Promise.all(commonFetches);
+    const [imagesResponse, caseResponse] = await Promise.all(commonFetches);
 
     images.value = imagesResponse.data as ImageRead[];
     const caseData = caseResponse.data as Case;
@@ -286,7 +272,7 @@ const fetchData = async () => {
       throw new Error('Failed to load case data');
     }
   // metadata removed
-    diagnosisTerms.value = termsResponse.data as DiagnosisTermRead[];
+  // diagnosis terms not needed in free-text mode
 
     if (isPostAiPhase.value) {
       console.log(`Fetching AI outputs for case ${caseId.value}`);
@@ -334,16 +320,16 @@ const fetchData = async () => {
     if (error.response?.status === 404) {
       toast.add({
         severity: 'error',
-        summary: 'Case Not Found',
-        detail: 'The requested case could not be found.',
+        summary: '未找到病例',
+        detail: '无法找到请求的病例。',
         life: 5000
       });
       router.push('/');
     } else {
       toast.add({
         severity: 'error',
-        summary: 'Error',
-        detail: 'Failed to load case data. Please try again.',
+        summary: '错误',
+        detail: '加载病例数据失败，请稍后重试。',
         life: 3000
       });
     }
@@ -512,15 +498,15 @@ const handlePreAiSubmit = async () => {
   if (submitting.value) return; // prevent double submit
   submitted.value = true;
   if (!userId.value || !caseId.value) {
-    toast.add({ severity: 'warn', summary: 'Missing Info', detail: 'User or Case ID not found.', life: 3000 });
+    toast.add({ severity: 'warn', summary: '缺少信息', detail: '未找到用户或病例 ID。', life: 3000 });
     return;
   }
   if (!preAiFormData.diagnosisRank1Text) {
-    toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Please enter at least a primary diagnosis (Rank 1).', life: 3000 });
+    toast.add({ severity: 'warn', summary: '验证错误', detail: '请至少填写一个主要诊断（Rank 1 必填）。', life: 3000 });
     return;
   }
   if (!preAiFormData.investigationPlan || !preAiFormData.nextStep) {
-    toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Please select Investigation and Next Step.', life: 3000 });
+    toast.add({ severity: 'warn', summary: '验证错误', detail: '请选择「检查计划」与「下一步」。', life: 3000 });
     return;
   }
   // management strategy removed
@@ -535,26 +521,10 @@ const handlePreAiSubmit = async () => {
       throw new Error('No assignment found for this case. Start or hydrate the game block first.');
     }
     // Build diagnosis debug info (not yet sent to backend)
-    const rawDiagnoses = [
-      { rank: 1, raw_text: preAiFormData.diagnosisRank1Text, selected: selectedDiagnosisByRank[1] },
-      { rank: 2, raw_text: preAiFormData.diagnosisRank2Text, selected: selectedDiagnosisByRank[2] },
-      { rank: 3, raw_text: preAiFormData.diagnosisRank3Text, selected: selectedDiagnosisByRank[3] }
-    ].filter(d => d.raw_text);
-    const resolvedEntries = rawDiagnoses.map(d => {
-      // Attempt to resolve by exact (case-insensitive) name match among loaded diagnosisTerms
-      const match = diagnosisTerms.value.find(t => t.name.toLowerCase() === (d.selected?.name || d.raw_text || '').toLowerCase());
-      return { rank: d.rank, raw_text: d.raw_text, diagnosis_term_id: d.selected?.id || match?.id || null, selectedName: d.selected?.name || null };
-    });
-    console.debug('PRE assessment diagnosis debug', {
-      case_id: caseId.value,
-      assignment_id: assignment.id,
-      rawDiagnoses,
-      resolvedEntries
-    });
     const diagnosisEntries = buildDiagnosisEntries('PRE');
     const primary = diagnosisEntries.find(e => e.rank === 1);
     if (!primary) {
-      toast.add({ severity: 'warn', summary: 'Unmapped Diagnosis', detail: 'Primary diagnosis must match a known term. Please select from suggestions.', life: 4000 });
+      toast.add({ severity: 'warn', summary: '验证错误', detail: '主要诊断为必填项。', life: 4000 });
       submitting.value = false;
       return;
     }
@@ -578,7 +548,7 @@ const handlePreAiSubmit = async () => {
       remaining_in_block: data?.remaining_in_block
     });
 
-  // TODO: map free-text diagnoses to term IDs (future feature). Currently omitted since backend expects IDs.
+  // Free-text only: backend should store raw_text; term IDs omitted
 
   // Mark assignment pre completion locally for dashboard progress
   (assignment as any).completed_pre_at = new Date().toISOString();
@@ -586,11 +556,11 @@ const handlePreAiSubmit = async () => {
   await caseStore.markProgress(caseId.value, false); // Mark pre-AI as complete
     // clearLocalStorage(preAiLocalStorageKey.value); // Keep pre-AI data for potential copy to post-AI
     submitted.value = false;
-    toast.add({ severity: 'success', summary: 'Success', detail: 'Pre-AI assessment saved. Proceeding to AI suggestions.', life: 2000 });
+    toast.add({ severity: 'success', summary: '成功', detail: 'Pre-AI 评估已保存，正在进入 AI 建议阶段。', life: 2000 });
     // isPostAiPhase will become true, triggering the watcher to refetch data including AI outputs.
   } catch (error: any) {
     console.error('Failed to submit pre-AI assessment:', error);
-    handleApiError(error, 'Pre-AI Submission Error');
+    handleApiError(error, 'Pre-AI 提交出错');
   } finally {
     submitting.value = false;
   }
@@ -600,25 +570,25 @@ const handlePostAiSubmit = async () => {
   if (submitting.value) return; // prevent double submit
   submitted.value = true;
   if (!userId.value || !caseId.value) {
-    toast.add({ severity: 'warn', summary: 'Missing Info', detail: 'User or Case ID not found.', life: 3000 });
+    toast.add({ severity: 'warn', summary: '缺少信息', detail: '未找到用户或病例 ID。', life: 3000 });
     return;
   }
   if (!postAiFormData.diagnosisRank1Text) {
-  toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Primary diagnosis required.', life: 3000 });
+  toast.add({ severity: 'warn', summary: '验证错误', detail: '主要诊断为必填项。', life: 3000 });
     return;
   }
   // Validate required POST fields individually to provide accurate feedback
   const missing: string[] = [];
-  if (postAiFormData.changeDiagnosis === null) missing.push('Did AI suggestions change your primary diagnosis?');
-  if (postAiFormData.changeManagement === null) missing.push('Did AI suggestions change your management plan?');
-  if (postAiFormData.aiUsefulness === null) missing.push('How useful were the AI suggestions?');
+  if (postAiFormData.changeDiagnosis === null) missing.push('AI 建议是否改变了你的主要诊断？');
+  if (postAiFormData.changeManagement === null) missing.push('AI 建议是否改变了你的管理方案？');
+  if (postAiFormData.aiUsefulness === null) missing.push('AI 建议对你有多大帮助？');
   if (missing.length) {
-    const detail = missing.length === 1 ? missing[0] : `Please complete: ${missing.join('; ')}`;
-    toast.add({ severity: 'warn', summary: 'Validation Error', detail, life: 4000 });
+    const detail = missing.length === 1 ? missing[0] : `请完成：${missing.join('；')}`;
+    toast.add({ severity: 'warn', summary: '验证错误', detail, life: 4000 });
     return;
   }
   if (!postAiFormData.investigationPlan || !postAiFormData.nextStep) {
-    toast.add({ severity: 'warn', summary: 'Validation Error', detail: 'Please select Investigation and Next Step.', life: 3000 });
+    toast.add({ severity: 'warn', summary: '验证错误', detail: '请选择「检查计划」与「下一步」。', life: 3000 });
     return;
   }
 
@@ -630,25 +600,10 @@ const handlePostAiSubmit = async () => {
     if (!assignment) {
       throw new Error('No assignment found for this case. Start or hydrate the game block first.');
     }
-    const rawDiagnoses = [
-      { rank: 1, raw_text: postAiFormData.diagnosisRank1Text, selected: selectedDiagnosisByRank[1] },
-      { rank: 2, raw_text: postAiFormData.diagnosisRank2Text, selected: selectedDiagnosisByRank[2] },
-      { rank: 3, raw_text: postAiFormData.diagnosisRank3Text, selected: selectedDiagnosisByRank[3] }
-    ].filter(d => d.raw_text);
-    const resolvedEntries = rawDiagnoses.map(d => {
-      const match = diagnosisTerms.value.find(t => t.name.toLowerCase() === (d.selected?.name || d.raw_text || '').toLowerCase());
-      return { rank: d.rank, raw_text: d.raw_text, diagnosis_term_id: d.selected?.id || match?.id || null, selectedName: d.selected?.name || null };
-    });
-    console.debug('POST assessment diagnosis debug', {
-      case_id: caseId.value,
-      assignment_id: assignment.id,
-      rawDiagnoses,
-      resolvedEntries
-    });
     const diagnosisEntries = buildDiagnosisEntries('POST');
     const primary = diagnosisEntries.find(e => e.rank === 1);
     if (!primary) {
-      toast.add({ severity: 'warn', summary: 'Unmapped Diagnosis', detail: 'Primary diagnosis must match a known term. Please select from suggestions.', life: 4000 });
+      toast.add({ severity: 'warn', summary: '验证错误', detail: '主要诊断为必填项。', life: 4000 });
       submitting.value = false;
       return;
     }
@@ -674,7 +629,7 @@ const handlePostAiSubmit = async () => {
       remaining_in_block: data?.remaining_in_block
     });
 
-  // TODO: submit free-text diagnoses when backend supports diagnosis_entries
+  // Free-text only: backend should store raw_text; term IDs omitted
 
   // Mark assignment post completion locally so dashboard reflects completion
   (assignment as any).completed_post_at = new Date().toISOString();
@@ -698,7 +653,7 @@ const handlePostAiSubmit = async () => {
       // Not complete yet -> request next assignment via unified flow
       const resp = await gamesStore.advanceToNext();
       if (resp.status === 'exhausted') {
-        toast.add({ severity: 'success', summary: 'All Cases Completed', detail: 'You finished all available cases.', life: 5000 });
+        toast.add({ severity: 'success', summary: '所有病例已完成', detail: '你已完成所有可用病例。', life: 5000 });
         router.push('/');
       } else if (resp.assignment) {
         router.push({ path: `/case/${resp.assignment.case_id}` });
@@ -709,14 +664,14 @@ const handlePostAiSubmit = async () => {
     }
   } catch (error: any) {
     console.error('Failed to submit post-AI assessment:', error);
-    handleApiError(error, 'Post-AI Submission Error');
+    handleApiError(error, 'Post-AI 提交出错');
   } finally {
     submitting.value = false;
   }
 };
 
-const handleApiError = (error: any, summary: string) => {
-  let detail = 'An unexpected error occurred. Please try again.';
+function handleApiError(error: any, summary: string) {
+  let detail = '发生未知错误，请稍后重试。';
   if (error.response?.data?.detail) {
     if (typeof error.response.data.detail === 'string') {
       detail = error.response.data.detail;
@@ -729,22 +684,22 @@ const handleApiError = (error: any, summary: string) => {
     detail = error.message;
   }
   toast.add({ severity: 'error', summary: summary, detail: detail, life: 5000 });
-};
+}
 
 // --- Computed Functions for Labels (passed to AssessmentForm) ---
 const getConfidenceLabel = (score: number) => {
   switch (score) {
-    case 1: return 'Very Low Confidence'; case 2: return 'Low Confidence';
-    case 3: return 'Moderate Confidence'; case 4: return 'High Confidence';
-    case 5: return 'Very High Confidence'; default: return 'Select Confidence Level';
+    case 1: return '信心很低'; case 2: return '信心较低';
+    case 3: return '信心一般'; case 4: return '信心较高';
+    case 5: return '信心很高'; default: return '选择诊断信心';
   }
 };
 
 const getCertaintyLabel = (score: number) => {
   switch (score) {
-    case 1: return 'Very Uncertain'; case 2: return 'Somewhat Uncertain';
-    case 3: return 'Moderately Certain'; case 4: return 'Quite Certain';
-    case 5: return 'Very Certain'; default: return 'Select Certainty Level';
+    case 1: return '把握很低'; case 2: return '把握较低';
+    case 3: return '把握一般'; case 4: return '把握较高';
+    case 5: return '把握很高'; default: return '选择把握程度';
   }
 };
 
@@ -753,7 +708,7 @@ function navigateToNextCase() {
   if (nextCase) {
     router.push({ path: `/case/${nextCase.id}` });
   } else {
-    toast.add({ severity: 'success', summary: 'All Cases Completed', detail: 'You finished all available cases.', life: 4000 });
+    toast.add({ severity: 'success', summary: '所有病例已完成', detail: '你已完成所有可用病例。', life: 4000 });
     router.push('/');
   }
 }
@@ -790,9 +745,9 @@ function handleBlockContinue() {
   </div>
   <!-- Post-AI accuracy reminder -->
   <div v-if="isPostAiPhase" class="ai-accuracy-note mb-3">
-    <strong class="mr-1">Note:</strong>
-    AI suggestions are assistive tools and not 100% accurate. Performance on validation dataset: Top-1 accuracy <span class="stat">49.50%</span>, Top-3 accuracy <span class="stat">67.50%</span> among 100+ skin conditions.
-    Always rely on your clinical judgment.
+    <strong class="mr-1">注意：</strong>
+    AI 建议仅为辅助，并非 100% 准确。在验证数据集上的表现：第一推荐准确率 <span class="stat">49.50%</span>、前三推荐准确率 <span class="stat">67.50%</span>。
+    请以你的临床经验进行决策。
   </div>
   <AIPredictionsTable :aiOutputs="aiOutputs" :isPostAiPhase="isPostAiPhase" />
   <CaseImageViewer :images="images" :loading="loading" :caseId="caseId" />
@@ -803,11 +758,11 @@ function handleBlockContinue() {
       <div class="col-12 lg:col-7">
   <!-- Pre-AI quick guidance -->
   <div v-if="!isPostAiPhase" class="preai-help-note mb-3">
-    Start with your own assessment: enter your Top 1–3 diagnoses (Rank 1 required), choose your Investigation and Next Step, and set confidence and certainty. You'll see AI suggestions afterwards.
+    先完病症评估：填写诊断（第一诊断必填），选择处理方法和对诊断的信心。提交后即可查看 AI 建议。
   </div>
   <AssessmentForm
           :formData="currentFormData"
-          :diagnosisTerms="diagnosisTerms"
+    :diagnosisTerms="[]"
           :scoreOptions="scoreOptions"
           :submitted="submitted"
           :submitting="submitting"
@@ -817,7 +772,6 @@ function handleBlockContinue() {
           :getConfidenceLabel="getConfidenceLabel"
           :getCertaintyLabel="getCertaintyLabel"
           @submit-form="handleSubmit"
-          @select-diagnosis="onDiagnosisSelected"
         />
       </div>
     </div>

@@ -3,61 +3,34 @@
     <table class="case-table w-full">
       <thead>
         <tr>
-          <th>Case</th>
-          <th>Ground Truth</th>
-          <th>Pre Top1</th>
-          <th>Pre Top3</th>
-          <th>Post Top1</th>
-          <th>Post Top3</th>
+          <th>{{ $t('report.caseLabel') }}</th>
+          <th>{{ $t('report.groundTruth') }}</th>
+          <th>{{ $t('report.yourPre') }}</th>
+          <th>{{ $t('report.yourPost') }}</th>
         </tr>
       </thead>
       <tbody>
         <tr v-for="c in cases" :key="c.case_id">
           <td>#{{ c.case_id }}</td>
           <td>{{ idLabel(c.ground_truth_diagnosis_id) }}</td>
-          <td :class="cellClass(c.pre_top1_diagnosis_term_id, c.ground_truth_diagnosis_id)">
-            <span>{{ idLabel(c.pre_top1_diagnosis_term_id) }}</span>
-            <i v-if="match(c.pre_top1_diagnosis_term_id, c.ground_truth_diagnosis_id)" class="pi pi-check text-green-500 ml-1" />
-            <i v-else class="pi pi-times text-red-400 ml-1" />
+          <td>
+            <span>{{ displayInput(c, 'pre') }}</span>
           </td>
           <td>
-            <div :class="top3CellClass(top3Ids(c,'pre'), c.ground_truth_diagnosis_id)" class="inline-flex align-items-center">
-              <span>
-                <template v-if="top3Ids(c,'pre') != null">
-                  {{ (top3Ids(c,'pre') || []).map(idLabel).join(', ') || '—' }}
-                </template>
-                <template v-else>—</template>
-              </span>
-              <i v-if="anyMatch(top3Ids(c,'pre'), c.ground_truth_diagnosis_id)" class="pi pi-check text-green-500 ml-2" />
-              <i v-else class="pi pi-times text-red-400 ml-2" />
-            </div>
-          </td>
-          <td :class="cellClass(c.post_top1_diagnosis_term_id, c.ground_truth_diagnosis_id)">
-            <span>{{ idLabel(c.post_top1_diagnosis_term_id) }}</span>
-            <i v-if="match(c.post_top1_diagnosis_term_id, c.ground_truth_diagnosis_id)" class="pi pi-check text-green-500 ml-1" />
-            <i v-else class="pi pi-times text-red-400 ml-1" />
-          </td>
-          <td>
-            <div :class="top3CellClass(top3Ids(c,'post'), c.ground_truth_diagnosis_id)" class="inline-flex align-items-center">
-              <span>
-                <template v-if="top3Ids(c,'post') != null">
-                  {{ (top3Ids(c,'post') || []).map(idLabel).join(', ') || '—' }}
-                </template>
-                <template v-else>—</template>
-              </span>
-              <i v-if="anyMatch(top3Ids(c,'post'), c.ground_truth_diagnosis_id)" class="pi pi-check text-green-500 ml-2" />
-              <i v-else class="pi pi-times text-red-400 ml-2" />
-            </div>
+            <span>{{ displayInput(c, 'post') }}</span>
           </td>
         </tr>
       </tbody>
     </table>
   </div>
-  <div v-else class="text-500 text-xs">No case rows</div>
+  <div v-else class="text-500 text-xs">—</div>
   
 </template>
 
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n';
+
+useI18n();
 
 const props = defineProps<{
   cases: any[];
@@ -68,13 +41,12 @@ function idLabel(id?:number|null){
   if(id==null) return '—';
   return props.termMap?.[id] || `#${id}`;
 }
-function match(a?:number|null, b?:number|null){ return a!=null && b!=null && a===b; }
-function cellClass(a?:number|null, gt?:number|null){ return match(a,gt) ? 'text-green-500 font-medium' : 'text-500'; }
-function anyMatch(arr?: (number|null)[] | null, gt?: number|null){ if(!arr || gt==null) return false; return arr.some(id=>id===gt); }
-function top3CellClass(arr?: (number|null)[] | null, gt?: number|null){ return anyMatch(arr, gt) ? 'text-green-500 font-medium' : 'text-500'; }
-function top3Ids(c:any, phase:'pre'|'post') : (number|null)[] | null {
-  if(phase==='pre') return c.pre_top3_diagnosis_term_ids || c.pre_top_diagnosis_term_ids || null;
-  return c.post_top3_diagnosis_term_ids || c.post_top_diagnosis_term_ids || null;
+function displayInput(c:any, phase:'pre'|'post') : string {
+  // Prefer raw_text if backend includes it; otherwise fallback to Top1 term id label
+  const raw = phase==='pre' ? c.pre_top1_raw_text : c.post_top1_raw_text;
+  if (typeof raw === 'string' && raw.trim().length > 0) return raw.trim();
+  const id = phase==='pre' ? c.pre_top1_diagnosis_term_id : c.post_top1_diagnosis_term_id;
+  return idLabel(id);
 }
 </script>
 
