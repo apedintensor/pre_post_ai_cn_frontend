@@ -760,6 +760,10 @@ function handleBlockContinue() {
   <div v-if="!isPostAiPhase" class="preai-help-note mb-3">
     先完病症评估：填写诊断（第一诊断必填），选择处理方法和对诊断的信心。提交后即可查看 AI 建议。
   </div>
+  <!-- Post-AI guidance: prompt to update Rank 1 if changed by AI -->
+  <div v-if="isPostAiPhase" class="preai-help-note mb-3">
+    如AI建议改变了你的诊断，请更新改变的诊断，并完成其余问题后提交。
+  </div>
   <AssessmentForm
           :formData="currentFormData"
     :diagnosisTerms="[]"
