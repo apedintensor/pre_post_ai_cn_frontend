@@ -2,10 +2,32 @@
   <div class="u-page u-page-standard">
     <Toast />
     
-    <!-- Progress Overview -->
+    <!-- Warm-up Guidance -->
     <div class="grid">
+      <div v-if="isNewUser" class="col-12 order-0">
+        <Card class="mb-4 warmup-card">
+          <template #title>
+            <div class="flex align-items-center gap-2">
+              <i class="pi pi-sparkles text-primary"></i>
+              <span class="text-xl font-medium">{{ $t('dashboard.warmupTitle') }}</span>
+            </div>
+          </template>
+          <template #content>
+            <ol class="warmup-steps">
+              <li>{{ $t('dashboard.warmupStep1') }}</li>
+              <li>{{ $t('dashboard.warmupStep2') }}</li>
+              <li>{{ $t('dashboard.warmupStep3') }}</li>
+            </ol>
+            <Message severity="info" class="mt-3 warmup-note">
+              {{ $t('dashboard.warmupNote') }}
+            </Message>
+          </template>
+        </Card>
+      </div>
+
+      <!-- Progress Overview -->
       <!-- Stats Summary (moved to top) -->
-      <div class="col-12 order-0">
+      <div class="col-12" :class="isNewUser ? 'order-1' : 'order-0'">
         <Card class="mb-4">
           <template #title>
             <div class="flex align-items-center">
@@ -71,8 +93,12 @@
         </Card>
       </div>
       <!-- Game Blocks (Server Managed) -->
-      <div class="col-12 order-1">
-        <DashboardGamesList />
+      <div class="col-12 order-2">
+        <DashboardGamesList
+          :is-new-user="isNewUser"
+          :start-demo-loading="startingDemo"
+          @start-demo="startDemo"
+        />
       </div>
 
   <!-- Available Cases list hidden per request -->
@@ -93,9 +119,11 @@ import Card from 'primevue/card';
 import Tag from 'primevue/tag';
 import ProgressBar from 'primevue/progressbar';
 import Toast from 'primevue/toast';
+import Message from 'primevue/message';
 // import InputText removed
 import { useToast } from 'primevue/usetoast';
 import { useI18n } from 'vue-i18n';
+import { navigateToDemoCase } from '../utils/demo';
 
 const router = useRouter();
 const userStore = useUserStore();
@@ -106,7 +134,9 @@ const toast = useToast();
 const { t } = useI18n();
 
 const loading = ref(true);
+const startingDemo = ref(false);
 const cases = computed(() => caseStore.cases);
+const isNewUser = computed(() => userStore.isNewUser);
 // Backend authoritative progress (null until fetched). When null, fall back to local derived counts.
 const progress = ref<GameProgressResponse | null>(null);
 // blockSize removed (no cases list)
@@ -139,6 +169,24 @@ const completionPercentage = computed(() => {
   }
   return cases.value.length ? (completedCases.value.length / cases.value.length) * 100 : 0;
 });
+
+const startDemo = async () => {
+  if (startingDemo.value) return;
+  startingDemo.value = true;
+  try {
+    await navigateToDemoCase(router, caseStore);
+  } catch (error: any) {
+    console.error('Failed to start demo case', error);
+    toast.add({
+      severity: 'error',
+      summary: t('common.error'),
+      detail: t('dashboard.startDemoFailed'),
+      life: 4000
+    });
+  } finally {
+    startingDemo.value = false;
+  }
+};
 
 // focusBlockStart removed with cases table
 
@@ -287,6 +335,26 @@ watch(() => caseStore.caseProgress, () => {
 </script>
 
 <style scoped>
+
+.warmup-card {
+  background: var(--surface-overlay);
+  border-radius: var(--border-radius);
+}
+
+.warmup-steps {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  color: var(--text-color);
+  font-size: 0.95rem;
+}
+
+.warmup-note {
+  font-size: 0.85rem;
+  line-height: 1.4;
+}
 
 :deep(.cursor-pointer) {
   cursor: pointer;

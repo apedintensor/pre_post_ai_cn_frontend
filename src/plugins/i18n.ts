@@ -51,8 +51,8 @@ const messages = {
       nextReassure: '安抚随访',
       nextManage: '自行处理',
       nextRefer: '转诊',
-      confidenceLabel: '对第一诊断的信心（1-5）',
-      certaintyLabel: '对处理方案的把握（1-5）',
+      confidenceLabel: '对第一诊断的信心（5为最有信心）',
+      certaintyLabel: '对处理方案的把握（5为最有信心）',
       changeDiagQuestion: 'AI 建议是否让你改变了第一诊断？',
       changeMgmtQuestion: 'AI 建议是否让你改变了处理方案？',
       changeDiagPrompt: '你选择了“是”。如已改变第一诊断，请在下方更新第 1 条诊断。',
@@ -65,8 +65,13 @@ const messages = {
       validationInvestigations: '请完善“检查”和“下一步”。',
       submitPre: '下一步：AI 辅助判断',
       submitPost: '完成评估',
-      progressCompleted: '{post}/{total} 已完成',
-      progressPreOnly: '{post}/{total} 已完成 • {preOnly} 个仅完成 AI 前'
+  progressCompleted: '{post}/{total} 已完成',
+  progressPreOnly: '{post}/{total} 已完成 • {preOnly} 个仅完成 AI 前',
+      demoBanner: '当前为体验模式，提交内容不会保存。',
+      demoPreSuccessTitle: 'Pre-AI 体验提交完成',
+      demoPreSuccessDetail: '已进入 AI 辅助阶段，请继续完成 Post-AI。',
+      demoPostSuccessTitle: '体验完成',
+      demoPostSuccessDetail: '选择再次体验或开始正式 10 例任务。'
     },
     dashboard: {
       title: '任务面板',
@@ -94,7 +99,14 @@ const messages = {
       reportNotReadyYet: '报告尚未就绪（该轮可能仍在进行或正在生成）。',
       completedToastTitle: '已完成',
       completedToastDetail: '已完成全部病例，做得很好！',
-      failedAdvance: '推进失败。'
+      failedAdvance: '推进失败。',
+      warmupTitle: '教程模式',
+      warmupStep1: '点击“开始demo”按钮进入演示。',
+      warmupStep2: '完成 Pre-AI 与 Post-AI 两个流程。',
+      warmupStep3: '熟悉流程后，在完成页选择“开始正式游戏”进入实战。',
+      warmupNote: '提示：一轮为10个诊断。',
+      startDemoFailed: 'demo暂时无法启动，请稍后重试。',
+      startDemo: '开始demo'
     },
     review: {
       title: '回顾评估',
@@ -122,6 +134,16 @@ const messages = {
       notReady: '报告未就绪',
       retry: '重试',
       back: '返回'
+    },
+    demo: {
+      completeTitle: '体验完成！',
+      completeLead: '你已经熟悉了流程，随时可以重复练习或开始正式挑战。',
+      practiceAgain: '再体验一遍',
+      startRealGame: '开始正式游戏',
+      practiceHint: '随时可以回到体验模式巩固流程。',
+      startGameError: '暂时无法获取正式任务，请稍后重试。',
+      practiceError: '体验模式暂时不可用，请稍后重试。',
+      exhausted: '当前没有可用的正式任务，请稍后再试。'
     },
     auth: {
       login: '登录',

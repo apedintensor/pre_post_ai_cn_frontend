@@ -17,8 +17,10 @@ import CaseImageViewer from '../components/CaseImageViewer.vue';
 import AIPredictionsTable from '../components/AIPredictionsTable.vue';
 import AssessmentForm from '../components/AssessmentForm.vue';
 import ProgressBar from 'primevue/progressbar';
+import Message from 'primevue/message';
 
 import Toast from 'primevue/toast'; // Keep Toast here for page-level messages
+import { useI18n } from 'vue-i18n';
 
 // --- Interfaces (Keep necessary interfaces here or move to a central types file) ---
 interface ImageRead {
@@ -95,10 +97,14 @@ const userStore = useUserStore();
 const caseStore = useCaseStore();
 const gameStore = useGameStore();
 const gamesStore = useGamesStore();
+const { t } = useI18n();
 
 const caseId = computed(() => parseInt(route.params.id as string, 10));
 const userId = computed(() => userStore.user?.id);
 const submitted = ref(false);
+
+const isDemoMode = computed(() => route.query.demo === '1');
+const demoPhase = ref<'pre' | 'post'>('pre');
 
 // --- State ---
 const images = ref<ImageRead[]>([]);
@@ -130,6 +136,9 @@ function buildDiagnosisEntries(phase: 'PRE' | 'POST'): DiagnosisEntryCreateTS[] 
 //  activeStep 1: Post-AI phase (preCompleted true, post not yet) -> show post form
 //  activeStep 2: Complete (postCompleted true) -> treat as post phase for display/completion
 const isPostAiPhase = computed(() => {
+  if (isDemoMode.value) {
+    return demoPhase.value !== 'pre';
+  }
   const progress = caseStore.caseProgress[caseId.value];
   if (!progress) return false;
   if (progress.postCompleted) return true;
@@ -145,6 +154,9 @@ const items = computed<MenuItem[]>(() => [
 ]);
 
 const activeStep = computed(() => {
+  if (isDemoMode.value) {
+    return demoPhase.value === 'pre' ? 0 : 1;
+  }
   const progress = caseStore.caseProgress[caseId.value];
   if (progress?.postCompleted) return 2; // Complete
   if (progress?.preCompleted) return 1;  // Post-AI phase
@@ -280,15 +292,21 @@ const fetchData = async () => {
         const aiResponse = await apiClient.get<AIOutputRead[]>(`/api/ai_outputs/case/${caseId.value}`);
         aiOutputs.value = aiResponse.data.sort((a: AIOutputRead, b: AIOutputRead) => (a.rank ?? 99) - (b.rank ?? 99)).slice(0, 5);
         console.log(`Loaded ${aiOutputs.value.length} AI outputs.`);
-        loadFromLocalStorage(postAiLocalStorageKey.value, postAiFormData);
+        if (!isDemoMode.value) {
+          loadFromLocalStorage(postAiLocalStorageKey.value, postAiFormData);
+        }
       } catch (aiError) {
         console.error('Failed to fetch AI outputs:', aiError);
         aiOutputs.value = [];
-        loadFromLocalStorage(postAiLocalStorageKey.value, postAiFormData);
+        if (!isDemoMode.value) {
+          loadFromLocalStorage(postAiLocalStorageKey.value, postAiFormData);
+        }
       }
     } else {
       aiOutputs.value = [];
-      loadFromLocalStorage(preAiLocalStorageKey.value, preAiFormData);
+      if (!isDemoMode.value) {
+        loadFromLocalStorage(preAiLocalStorageKey.value, preAiFormData);
+      }
     }
      // Check if current phase form data is empty and if previous phase data exists
     if (isPostAiPhase.value && !Object.values(postAiFormData).some(val => val !== null && val !== '' && val !== 3)) {
@@ -373,8 +391,14 @@ const resetFormData = () => {
   });
 };
 
-watch(preAiFormData, () => saveToLocalStorage(preAiLocalStorageKey.value, preAiFormData), { deep: true });
-watch(postAiFormData, () => saveToLocalStorage(postAiLocalStorageKey.value, postAiFormData), { deep: true });
+watch(preAiFormData, () => {
+  if (isDemoMode.value) return;
+  saveToLocalStorage(preAiLocalStorageKey.value, preAiFormData);
+}, { deep: true });
+watch(postAiFormData, () => {
+  if (isDemoMode.value) return;
+  saveToLocalStorage(postAiLocalStorageKey.value, postAiFormData);
+}, { deep: true });
 
 watch(() => route.params.id, async (newIdStr, oldIdStr) => {
   const newId = newIdStr ? parseInt(newIdStr as string, 10) : null;
@@ -384,6 +408,9 @@ watch(() => route.params.id, async (newIdStr, oldIdStr) => {
     resetFormData(); // Reset forms for the new case
     // The phase will be determined by caseStore progress, which is re-evaluated by isPostAiPhase
     // Ensure progress loaded for new case before fetching so phase detection is correct
+    if (isDemoMode.value) {
+      demoPhase.value = 'pre';
+    }
     if (!caseStore.cases.length && userId.value) {
       await caseStore.loadCases();
     } else if (userId.value) {
@@ -393,6 +420,12 @@ watch(() => route.params.id, async (newIdStr, oldIdStr) => {
     await fetchData(); // Fetch data for the new case after ensuring progress
   }
 }, { immediate: true });
+
+watch(isDemoMode, (flag) => {
+  if (!flag) {
+    demoPhase.value = 'pre';
+  }
+});
 
 
 watch(isPostAiPhase, async (newPhase, oldPhase) => {
@@ -511,6 +544,18 @@ const handlePreAiSubmit = async () => {
   }
   // management strategy removed
 
+  if (isDemoMode.value) {
+    submitting.value = true;
+    try {
+      submitted.value = false;
+      demoPhase.value = 'post';
+      toast.add({ severity: 'success', summary: t('case.demoPreSuccessTitle'), detail: t('case.demoPreSuccessDetail'), life: 2500 });
+    } finally {
+      submitting.value = false;
+    }
+    return;
+  }
+
   submitting.value = true;
   try {
     // Find assignment for this user+case in any loaded block
@@ -589,6 +634,22 @@ const handlePostAiSubmit = async () => {
   }
   if (!postAiFormData.investigationPlan || !postAiFormData.nextStep) {
     toast.add({ severity: 'warn', summary: '验证错误', detail: '请选择「检查计划」与「下一步」。', life: 3000 });
+    return;
+  }
+
+  if (isDemoMode.value) {
+    submitting.value = true;
+    try {
+      toast.add({ severity: 'success', summary: t('case.demoPostSuccessTitle'), detail: t('case.demoPostSuccessDetail'), life: 3000 });
+      submitted.value = false;
+      resetFormData();
+      demoPhase.value = 'pre';
+      await router.push('/demo-complete');
+    } catch (error: any) {
+      console.error('Failed to complete demo post-AI assessment:', error);
+    } finally {
+      submitting.value = false;
+    }
     return;
   }
 
@@ -726,13 +787,16 @@ function handleBlockContinue() {
   <div class="u-page u-page-wide case-container u-surface-ground border-round case-page-green">
     <Toast />
     <BlockFeedbackPanel
-      v-if="enableBlockFeedback"
+      v-if="enableBlockFeedback && !isDemoMode"
       :visible="gameStore.blockFeedbackVisible"
       :stats="gameStore.currentBlockFeedback"
       :loading="gameStore.loadingFeedback"
       @continue="handleBlockContinue"
     />
     <CaseProgressSteps :items="items" :activeStep="activeStep" />
+    <Message v-if="isDemoMode" severity="info" class="demo-banner mb-3">
+      {{ $t('case.demoBanner') }}
+    </Message>
 
     <div class="grid">
       <!-- Left Column -->
@@ -834,5 +898,10 @@ function handleBlockContinue() {
   color: var(--text-color, #374151);
   font-size: 0.875rem;
   line-height: 1.4;
+}
+
+.demo-banner {
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 </style>

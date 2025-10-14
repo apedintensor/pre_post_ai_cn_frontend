@@ -43,7 +43,7 @@
                 </div>
               </div>
 
-              <!-- Age Field (captured locally; backend uses age_bracket only) -->
+              <!-- Age Field -->
               <div class="col-12 md:col-6">
                 <label for="age" class="field-label with-icon"><i class="pi pi-user" /> 年龄</label>
                 <InputNumber
@@ -175,7 +175,7 @@
 </style>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'; // Import onMounted
+import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
@@ -312,7 +312,28 @@ const handleSignup = async () => {
   loading.value = true;
   try {
     // Ensure required fields are not null before sending
-    const { email, password, age_bracket, years_experience, years_derm_experience, role_id, country_code, gender } = formData;
+    const numericAge = formData.age;
+    if (numericAge === null || Number.isNaN(numericAge)) {
+      toast.add({ severity: 'warn', summary: '年龄', detail: '请输入年龄。', life: 3000 });
+      loading.value = false;
+      return;
+    }
+    if (numericAge < 0 || numericAge > 120) {
+      toast.add({ severity: 'warn', summary: '年龄', detail: '请输入 0 到 120 之间的年龄。', life: 3000 });
+      loading.value = false;
+      return;
+    }
+
+    formData.age_bracket = String(Math.round(numericAge));
+
+  const { email, password, age_bracket, years_experience, years_derm_experience, role_id, country_code, gender } = formData;
+
+    if (!age_bracket) {
+      toast.add({ severity: 'warn', summary: '年龄', detail: '请输入有效年龄。', life: 3000 });
+      loading.value = false;
+      return;
+    }
+
     const payload = {
       email,
       password,

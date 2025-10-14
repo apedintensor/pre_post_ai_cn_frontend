@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { ref, computed } from 'vue'; // Import computed
+import { ref, computed, watch } from 'vue'; // Import computed
 import apiClient from '../api';
 
 // Define the structure based on UserRead schema
@@ -22,6 +22,51 @@ export const useUserStore = defineStore('user', () => {
   const user = ref<User | null>(null);
   // Use 'access_token' consistent with LoginPage and apiClient interceptor
   const token = ref<string | null>(localStorage.getItem('access_token'));
+  const isNewUser = ref<boolean>(true);
+
+  const NEW_USER_KEY_PREFIX = 'new_user_flag_';
+
+  function loadNewUserFlag(userId: number | null | undefined): boolean {
+    if (!userId) return true;
+    try {
+      const stored = localStorage.getItem(`${NEW_USER_KEY_PREFIX}${userId}`);
+      if (stored === null) return true;
+      if (stored === 'true' || stored === 'false') {
+        return stored === 'true';
+      }
+      return JSON.parse(stored);
+    } catch (e) {
+      console.warn('Failed to parse stored new-user flag, defaulting to true.', e);
+      localStorage.removeItem(`${NEW_USER_KEY_PREFIX}${userId}`);
+      return true;
+    }
+  }
+
+  function persistNewUserFlag(userId?: number | null) {
+    const id = userId ?? user.value?.id;
+    if (!id) return;
+    localStorage.setItem(`${NEW_USER_KEY_PREFIX}${id}`, JSON.stringify(isNewUser.value));
+  }
+
+  function setIsNewUser(value: boolean) {
+    isNewUser.value = value;
+    persistNewUserFlag();
+  }
+
+  function resetNewUserState() {
+    if (user.value?.id) {
+      localStorage.removeItem(`${NEW_USER_KEY_PREFIX}${user.value.id}`);
+    }
+    isNewUser.value = true;
+  }
+
+  function evaluateNewUserHeuristic({ hasCompletedReports, hasActiveAssignment }: { hasCompletedReports: boolean; hasActiveAssignment: boolean; }) {
+    const shouldBeNew = !hasCompletedReports && !hasActiveAssignment;
+    if (shouldBeNew !== isNewUser.value) {
+      setIsNewUser(shouldBeNew);
+    }
+    return isNewUser.value;
+  }
 
   // Actions
   function setToken(newToken: string) {
@@ -31,6 +76,7 @@ export const useUserStore = defineStore('user', () => {
   }
 
   function clearAuth() {
+    resetNewUserState();
     user.value = null;
     token.value = null;
     localStorage.removeItem('userData');
@@ -49,6 +95,7 @@ export const useUserStore = defineStore('user', () => {
   const response = await apiClient.get<User>('/api/auth/me');
       user.value = response.data;
       localStorage.setItem('userData', JSON.stringify(user.value));
+      isNewUser.value = loadNewUserFlag(user.value?.id);
       console.log("Current user fetched:", user.value);
       return true;
     } catch (error: any) {
@@ -77,6 +124,7 @@ export const useUserStore = defineStore('user', () => {
       if (storedUser) {
         try {
           user.value = JSON.parse(storedUser);
+          isNewUser.value = loadNewUserFlag(user.value?.id);
         } catch (e) {
           console.error("Failed to parse user data from localStorage", e);
           localStorage.removeItem('userData'); // Clear invalid data
@@ -96,17 +144,27 @@ export const useUserStore = defineStore('user', () => {
   // Computed property to check if user is authenticated
   const isAuthenticated = computed(() => !!token.value && !!user.value);
 
+  watch(user, (next, prev) => {
+    if (next?.id && next?.id !== prev?.id) {
+      isNewUser.value = loadNewUserFlag(next.id);
+    }
+  });
+
   // Initialize store from localStorage on creation
   loadFromLocalStorage();
 
   return {
     user,
     token,
+    isNewUser,
     isAuthenticated, // Expose computed property
     setToken,
     logout,
     fetchCurrentUser,
     loadFromLocalStorage, // Keep if external loading is needed
     clearAuth, // Expose clearAuth
+    setIsNewUser,
+    evaluateNewUserHeuristic,
+    persistNewUserFlag,
   };
 });

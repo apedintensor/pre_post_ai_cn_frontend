@@ -7,14 +7,22 @@
           <span class="line">{{ $t('dashboard.introLine2') }}</span>
         </span>
         <div class="start-btn-container">
-          <Button v-if="!allExhausted" :label="nextActionLabelLocalized" icon="pi pi-play" class="p-button-rounded big-start-btn cta-start-btn" :loading="advancing" :disabled="advancing" @click="onAdvance" />
+          <Button
+            v-if="!allExhausted"
+            :label="startButtonLabel"
+            :icon="startButtonIcon"
+            class="p-button-rounded big-start-btn cta-start-btn"
+            :loading="startButtonLoading"
+            :disabled="startButtonDisabled"
+            @click="onAdvance"
+          />
           <Tag v-else severity="success" :value="$t('dashboard.allDone')" />
         </div>
       </div>
     </template>
     <template #content>
-  <div v-if="!games.length && !incompleteBlockExists && !advancing && !allExhausted" class="text-600 text-sm text-center py-3">{{ $t('dashboard.noGamesYet') }}</div>
-      <div class="blocks-list flex flex-column gap-3">
+      <div v-if="!isNewUser && !games.length && !incompleteBlockExists && !advancing && !allExhausted" class="text-600 text-sm text-center py-3">{{ $t('dashboard.noGamesYet') }}</div>
+      <div v-if="!isNewUser" class="blocks-list flex flex-column gap-3">
   <div v-for="g in gamesSorted" :key="g.block_index" class="block-row u-surface-overlay u-card-pad border-round u-elev-1">
           <div class="row-head flex justify-content-between align-items-center">
             <div class="flex align-items-center gap-2">
@@ -73,6 +81,9 @@ import GameReportCaseTable from './GameReportCaseTable.vue';
 import { useI18n } from 'vue-i18n';
 import { useUserStore } from '../stores/userStore';
 
+const props = defineProps<{ isNewUser?: boolean; startDemoLoading?: boolean }>();
+const emit = defineEmits<{ (e: 'start-demo'): void }>();
+
 const gamesStore = useGamesStore();
 const toast = useToast();
 const router = useRouter();
@@ -98,6 +109,7 @@ onMounted(()=>{ ensureTerms(); gamesStore.hydrateActiveGame().catch(()=>{}); });
 // Display newest / largest block first (descending order)
 const gamesSorted = computed(()=>[...games.value].sort((a,b)=> (b.block_index ?? 0) - (a.block_index ?? 0)));
 const advancing = ref(false);
+const isNewUser = computed(() => !!props.isNewUser);
 // Identify an in-progress (incomplete) block (has assignments & some not finished)
 const incompleteBlockIndex = computed(()=>{
   const map:any = gamesStore.assignmentsByBlock || {};
@@ -116,12 +128,20 @@ const nextActionLabel = computed(()=>{
 const nextActionLabelLocalized = computed(()=> t(`dashboard.${nextActionLabel.value}`));
 const allExhausted = computed(()=>gamesStore.activeStatus === 'exhausted');
 const expandedBlock = ref<number|null>(null);
+const startButtonLabel = computed(() => isNewUser.value ? t('dashboard.startDemo') : nextActionLabelLocalized.value);
+const startButtonIcon = computed(() => isNewUser.value ? 'pi pi-compass' : 'pi pi-play');
+const startButtonLoading = computed(() => isNewUser.value ? !!props.startDemoLoading : advancing.value);
+const startButtonDisabled = computed(() => isNewUser.value ? !!props.startDemoLoading : advancing.value);
 interface ReportState { loading:boolean; data:any|null; attempts:number; poller?:any }
 const reportState = ref<Record<number, ReportState>>({});
 
 // Removed per-game progress Tag display helpers
 
 async function onAdvance(){
+  if(isNewUser.value){
+    emit('start-demo');
+    return;
+  }
   if(advancing.value) return; advancing.value = true;
   try {
     const r = await gamesStore.advanceToNext();

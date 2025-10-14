@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia';
-import { ref, reactive, computed } from 'vue';
+import { storeToRefs } from 'pinia';
+import { ref, reactive, computed, watch } from 'vue';
 import apiClient from '../api';
 import { useUserStore } from './userStore';
 import { getActiveGame } from '../api/games';
@@ -22,12 +23,38 @@ interface CaseProgress {
 
 export const useCaseStore = defineStore('case', () => {
   const userStore = useUserStore();
+  const { isAuthenticated, isNewUser } = storeToRefs(userStore);
   // gameStore no longer required here after refactor (progress callbacks removed)
   const cases = ref<Case[]>([]);
   const currentIndex = ref<number>(0);
   const completedCases = ref<number[]>([]);
   // Use reactive object instead of ref wrapper to avoid manual refresh hacks
   const caseProgress = reactive<Record<number, CaseProgress>>({});
+
+  const CASE_PROGRESS_KEY_PREFIX = 'caseProgress_';
+  const LEGACY_CASE_PROGRESS_KEY = 'caseProgress';
+
+  function progressStorageKey(userId?: number | null) {
+    return userId ? `${CASE_PROGRESS_KEY_PREFIX}${userId}` : LEGACY_CASE_PROGRESS_KEY;
+  }
+
+  function resetState() {
+    cases.value = [];
+    currentIndex.value = 0;
+    completedCases.value = [];
+    Object.keys(caseProgress).forEach(k => delete caseProgress[Number(k)]);
+  }
+
+  let lastUserId: number | null = userStore.user?.id ?? null;
+  watch(() => userStore.user?.id ?? null, (id, prev) => {
+    if (id != null) {
+      lastUserId = id;
+    }
+    if (prev != null && id == null) {
+      const key = progressStorageKey(prev);
+      localStorage.removeItem(key);
+    }
+  });
 
   // Fetch assessments and update progress
   async function loadAssessmentsAndProgress(userId: number) {
@@ -203,7 +230,15 @@ export const useCaseStore = defineStore('case', () => {
   function refreshCaseProgress() { /* noop retained for backward compatibility */ }
 
   function loadProgressFromCache() {
-    const storedProgress = localStorage.getItem('caseProgress');
+    const key = progressStorageKey(userStore.user?.id);
+    let storedProgress = localStorage.getItem(key);
+    if (!storedProgress) {
+      storedProgress = localStorage.getItem(LEGACY_CASE_PROGRESS_KEY);
+      if (storedProgress && userStore.user?.id) {
+        localStorage.setItem(key, storedProgress);
+        localStorage.removeItem(LEGACY_CASE_PROGRESS_KEY);
+      }
+    }
     if (storedProgress) {
       try {
         const parsed = JSON.parse(storedProgress) as Record<number, CaseProgress>;
@@ -223,7 +258,7 @@ export const useCaseStore = defineStore('case', () => {
           }
         });
 
-        // Update completedCases for backward compatibility
+  // Update completedCases for backward compatibility
   completedCases.value = Object.values(caseProgress)
           .filter(p => p.postCompleted)
           .map(p => p.caseId);
@@ -231,8 +266,8 @@ export const useCaseStore = defineStore('case', () => {
         // Save the updated progress state
         saveProgressToCache();
       } catch (e) {
-        console.error('Failed to parse case progress:', e);
-  Object.keys(caseProgress).forEach(k => { delete caseProgress[Number(k)]; });
+    console.error('Failed to parse case progress:', e);
+    Object.keys(caseProgress).forEach(k => { delete caseProgress[Number(k)]; });
         // Initialize empty progress for all cases
         cases.value.forEach(c => {
           caseProgress[c.id] = {
@@ -253,7 +288,8 @@ export const useCaseStore = defineStore('case', () => {
   }
 
   function saveProgressToCache() {
-  localStorage.setItem('caseProgress', JSON.stringify(caseProgress));
+    const key = progressStorageKey(userStore.user?.id);
+    localStorage.setItem(key, JSON.stringify(caseProgress));
   }
 
   function getIncompleteCases() {
@@ -320,11 +356,29 @@ export const useCaseStore = defineStore('case', () => {
     return null;
   });
 
+  watch(isAuthenticated, (authed, prev) => {
+    if (!authed && prev) {
+      if (lastUserId != null) {
+        const key = progressStorageKey(lastUserId);
+        localStorage.removeItem(key);
+        lastUserId = null;
+      }
+      resetState();
+    }
+  });
+
+  watch(isNewUser, (flag, prev) => {
+    if (flag === false && prev !== false && userStore.user?.id) {
+      loadAssessmentsAndProgress(userStore.user.id).catch(() => {});
+    }
+  });
+
   return {
     cases,
     currentIndex,
     completedCases,
   caseProgress,
+    resetState,
     loadCases,
     loadAssessmentsAndProgress,
   loadAssessmentsAcrossBlocks,

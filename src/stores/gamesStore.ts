@@ -1,8 +1,11 @@
-import { defineStore } from 'pinia';
-import { ref } from 'vue';
+import { defineStore, storeToRefs } from 'pinia';
+import { ref, watch } from 'vue';
 import { getGames, getGame, createNextGame, getGameAssignments, getActiveGame, gameNext, canViewReport, type GameSummary, type Assignment, type GameNextResponse } from '../api/games';
+import { useUserStore } from './userStore';
 
 export const useGamesStore = defineStore('games', () => {
+  const userStore = useUserStore();
+  const { isAuthenticated, isNewUser } = storeToRefs(userStore);
   const games = ref<GameSummary[]>([]);
   const assignmentsByBlock = ref<Record<number, Assignment[]>>({});
   const blockSizes = ref<Record<number, number>>({}); // persist known block sizes
@@ -14,6 +17,27 @@ export const useGamesStore = defineStore('games', () => {
   const activeRemaining = ref<number | null>(null); // remaining not POST-finished in current block
   const activeStatus = ref<'started' | 'continuing' | 'exhausted' | null>(null);
 
+  function resetState() {
+    Object.values(pollingHandles.value).forEach(handle => clearInterval(handle));
+    pollingHandles.value = {};
+    games.value = [];
+    assignmentsByBlock.value = {};
+    blockSizes.value = {};
+    loadingGames.value = false;
+    loadingAssignments.value = false;
+    creatingNext.value = false;
+    activeAssignment.value = null;
+    activeRemaining.value = null;
+    activeStatus.value = null;
+  }
+
+  function updateNewUserState() {
+  if (!isAuthenticated.value) return;
+    const hasCompletedReports = games.value.some(g => g.top1_accuracy_pre != null || g.top1_accuracy_post != null || g.delta_top1 != null || g.delta_top3 != null);
+    const hasActiveAssignment = Object.values(assignmentsByBlock.value).some(list => Array.isArray(list) && list.some(a => !a.completed_post_at));
+    userStore.evaluateNewUserHeuristic({ hasCompletedReports, hasActiveAssignment });
+  }
+
   function getBlockAssignments(block: number) {
     return assignmentsByBlock.value[block] || [];
   }
@@ -23,6 +47,7 @@ export const useGamesStore = defineStore('games', () => {
   // Track the largest known size for this block
   const size = assignments.length;
   if (size > (blockSizes.value[block] ?? 0)) blockSizes.value[block] = size;
+    updateNewUserState();
   }
 
   function upsertGame(summary: GameSummary) {
@@ -42,6 +67,7 @@ export const useGamesStore = defineStore('games', () => {
       for (const g of games.value) byIndex.set(g.block_index, g);
       for (const g of list) byIndex.set(g.block_index, g);
       games.value = Array.from(byIndex.values()).sort((a,b)=>a.block_index - b.block_index);
+      updateNewUserState();
     } finally {
       loadingGames.value = false;
     }
@@ -60,6 +86,7 @@ export const useGamesStore = defineStore('games', () => {
       } catch { /* ignore can_view_report errors and attempt getGame as fallback */ }
       const summary = await getGame(block);
       upsertGame(summary);
+      updateNewUserState();
     } catch (e: any) {
       if (e?.response?.status === 404) {
         // Summary not ready; swallow
@@ -122,9 +149,11 @@ export const useGamesStore = defineStore('games', () => {
           upsertGame({ block_index: resp.block_index });
         }
       }
+  userStore.setIsNewUser(false);
     } else {
       activeAssignment.value = null;
     }
+    updateNewUserState();
     return resp;
   }
 
@@ -206,11 +235,26 @@ export const useGamesStore = defineStore('games', () => {
         if (!games.value.some(g => g.block_index === block)) {
           upsertGame({ block_index: block });
         }
+        updateNewUserState();
       }
     } catch (e) {
       // silent: no active game is fine
     }
   }
 
-  return { games, assignmentsByBlock, loadingGames, loadingAssignments, creatingNext, loadAllGames, loadGame, startNextGame, advanceToNext, activeAssignment, activeRemaining, activeStatus, getBlockAssignments, hasIncompleteBlock, latestBlockIndex, blockProgress, refreshSummaryIfCompleted, loadAssignments, ensureAssignmentsLoaded, startSummaryPolling, stopSummaryPolling, hydrateActiveGame };
+  watch(isAuthenticated, (authed) => {
+    if (!authed) {
+      resetState();
+    }
+  }, { immediate: true });
+
+  watch(isNewUser, (flag, prev) => {
+    if (flag === false && prev !== false) {
+      // warm-up complete -> hydrate actual data
+      loadAllGames(true).catch(()=>{});
+      hydrateActiveGame().catch(()=>{});
+    }
+  });
+
+  return { games, assignmentsByBlock, loadingGames, loadingAssignments, creatingNext, loadAllGames, loadGame, startNextGame, advanceToNext, activeAssignment, activeRemaining, activeStatus, getBlockAssignments, hasIncompleteBlock, latestBlockIndex, blockProgress, refreshSummaryIfCompleted, loadAssignments, ensureAssignmentsLoaded, startSummaryPolling, stopSummaryPolling, hydrateActiveGame, resetState };
 });
