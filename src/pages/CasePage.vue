@@ -21,6 +21,9 @@ import Message from 'primevue/message';
 
 import Toast from 'primevue/toast'; // Keep Toast here for page-level messages
 import { useI18n } from 'vue-i18n';
+import type { AssessmentCreatePayload, DiagnosisEntryCreate } from '../types/domain';
+import type { InvestigationPlan, NextStepAction } from '../utils/assessmentEnums';
+import { normalizeInvestigationPlan, normalizeNextStepAction } from '../utils/assessmentEnums';
 
 // --- Interfaces (Keep necessary interfaces here or move to a central types file) ---
 interface ImageRead {
@@ -46,26 +49,7 @@ interface AIOutputRead {
   prediction: DiagnosisTermRead;
 }
 
-// Updated to match current OpenAPI (see docs/openapi.json):
-// DiagnosisEntryCreate: { rank: int; raw_text?: string | null; diagnosis_term_id: int }
-interface DiagnosisEntryCreateTS {
-  rank: number;
-  raw_text?: string | null;
-  diagnosis_term_id?: number | null; // free-text mode: optional
-}
-
-interface AssessmentCreate {
-  assignment_id: number;
-  phase: 'PRE' | 'POST';
-  diagnostic_confidence?: number | null;
-  management_confidence?: number | null;
-  investigation_plan?: 'none' | 'biopsy' | 'other' | null;
-  next_step?: 'reassure' | 'manage' | 'refer' | null;
-  changed_primary_diagnosis?: boolean | null; // POST only
-  changed_management_plan?: boolean | null;   // POST only
-  ai_usefulness?: string | null;              // POST only
-  diagnosis_entries?: DiagnosisEntryCreateTS[]; // defaults to [] server-side
-}
+type AssessmentCreate = AssessmentCreatePayload;
 
 // New extended response metadata returned by backend after submitting an assessment
 interface AssessmentSubmitResponse {
@@ -118,16 +102,16 @@ const wasFinalInBlock = ref(false);
 // Track selected diagnosis term objects (from autocomplete select events)
 // Free-text mode: no selected canonical items
 
-function buildDiagnosisEntries(phase: 'PRE' | 'POST'): DiagnosisEntryCreateTS[] {
+function buildDiagnosisEntries(phase: 'PRE' | 'POST'): DiagnosisEntryCreate[] {
   const src = phase === 'PRE' ? preAiFormData : postAiFormData;
   const raw = [
     { rank: 1, text: src.diagnosisRank1Text },
     { rank: 2, text: src.diagnosisRank2Text },
     { rank: 3, text: src.diagnosisRank3Text }
   ].filter(e => e.text && e.text.trim().length);
-  const mapped = raw.map(e => ({ rank: e.rank, raw_text: e.text!.trim(), diagnosis_term_id: null as any }));
+  const mapped = raw.map(e => ({ rank: e.rank as 1 | 2 | 3, raw_text: e.text!.trim() }));
   console.debug('buildDiagnosisEntries (free-text)', mapped);
-  return mapped as unknown as DiagnosisEntryCreateTS[];
+  return mapped as DiagnosisEntryCreate[];
 }
 
 // --- Phase Detection ---
@@ -189,25 +173,28 @@ watch(currentBlockIndex, async (block) => {
 }, { immediate: false });
 
 // Percent with partial credit for Pre-AI: each pre-only case counts as 0.5, post counts as 1
-// Denominator hard-coded to 10 (fixed game size)
+// Use block-provided total so UI reflects backend block size dynamically
 const gameProgressPercent = computed(() => {
-  const prog = blockProgress.value; if (!prog) return 0;
-  const { pre = 0, post = 0 } = prog as any;
-  const TOTAL = 10;
+  const prog = blockProgress.value;
+  if (!prog) return 0;
+  const { pre = 0, post = 0, total = 0 } = prog as any;
+  const denominator = total || Math.max(pre, post, 1);
   const preOnly = Math.max(0, pre - post);
-  const weighted = Math.min(TOTAL, post + preOnly * 0.5);
-  return Math.round((weighted / TOTAL) * 100);
+  const weighted = Math.min(denominator, post + preOnly * 0.5);
+  return Math.round((weighted / denominator) * 100);
 });
 
 // Label for inside bar: show completed and in-progress counts
 const gameProgressBarLabel = computed(() => {
-  const prog = blockProgress.value; if(!prog) return '';
-  const { pre = 0, post = 0 } = prog as any;
-  const total = 10;
+  const prog = blockProgress.value;
+  if (!prog) return '';
+  const { pre = 0, post = 0, total = 0 } = prog as any;
+  const denominator = total || Math.max(pre, post, 0);
+  if (!denominator) return '';
   const preOnly = Math.max(0, pre - post);
   return preOnly > 0
-    ? `${post}/${total} 已完成 • ${preOnly} 个仅完成 Pre-AI`
-    : `${post}/${total} 已完成`;
+    ? `${post}/${denominator} 已完成 • ${preOnly} 个仅完成 Pre-AI`
+    : `${post}/${denominator} 已完成`;
 });
 
 
@@ -218,8 +205,8 @@ const preAiFormData = reactive({
   diagnosisRank3Text: null as string | null,
   confidenceScore: 3,
   certaintyScore: 3,
-  investigationPlan: null as 'none' | 'biopsy' | 'other' | null,
-  nextStep: null as 'reassure' | 'manage' | 'refer' | null,
+  investigationPlan: null as InvestigationPlan | null,
+  nextStep: null as NextStepAction | null,
 });
 
 const postAiFormData = reactive({
@@ -231,8 +218,8 @@ const postAiFormData = reactive({
   changeDiagnosis: null as boolean | null,
   changeManagement: null as boolean | null,
   aiUsefulness: null as string | null,
-  investigationPlan: null as 'none' | 'biopsy' | 'other' | null,
-  nextStep: null as 'reassure' | 'manage' | 'refer' | null,
+  investigationPlan: null as InvestigationPlan | null,
+  nextStep: null as NextStepAction | null,
 });
 
 const currentFormData = computed(() => isPostAiPhase.value ? postAiFormData : preAiFormData);
@@ -320,10 +307,10 @@ const fetchData = async () => {
                 postAiFormData.confidenceScore = parsedPreAi.confidenceScore;
                 postAiFormData.certaintyScore = parsedPreAi.certaintyScore;
                 if (postAiFormData.investigationPlan == null) {
-                  postAiFormData.investigationPlan = parsedPreAi.investigationPlan ?? null;
+                  postAiFormData.investigationPlan = normalizeInvestigationPlan(parsedPreAi.investigationPlan);
                 }
                 if (postAiFormData.nextStep == null) {
-                  postAiFormData.nextStep = parsedPreAi.nextStep ?? null;
+                  postAiFormData.nextStep = normalizeNextStepAction(parsedPreAi.nextStep);
                 }
                  console.log('Copied Pre-AI data to Post-AI form');
             } catch (e) {
@@ -367,12 +354,22 @@ const loadFromLocalStorage = (key: string, target: object) => {
     try {
       const parsedData = JSON.parse(savedData);
       Object.assign(target, parsedData);
+      coerceManagementFields(target as any);
     } catch (e) {
       console.error(`Failed to parse saved form data for key ${key}:`, e);
       localStorage.removeItem(key);
     }
   }
 };
+
+function coerceManagementFields(obj: { investigationPlan?: any; nextStep?: any }) {
+  if ('investigationPlan' in obj) {
+    obj.investigationPlan = normalizeInvestigationPlan(obj.investigationPlan);
+  }
+  if ('nextStep' in obj) {
+    obj.nextStep = normalizeNextStepAction(obj.nextStep);
+  }
+}
 
 const clearLocalStorage = (key: string) => {
   localStorage.removeItem(key);
@@ -439,10 +436,10 @@ watch(isPostAiPhase, async (newPhase, oldPhase) => {
       // After fetch, ensure management binary choices are carried over if not yet set
       if (newPhase) {
         if (postAiFormData.investigationPlan == null && preAiFormData.investigationPlan != null) {
-          postAiFormData.investigationPlan = preAiFormData.investigationPlan;
+          postAiFormData.investigationPlan = normalizeInvestigationPlan(preAiFormData.investigationPlan);
         }
         if (postAiFormData.nextStep == null && preAiFormData.nextStep != null) {
-          postAiFormData.nextStep = preAiFormData.nextStep;
+          postAiFormData.nextStep = normalizeNextStepAction(preAiFormData.nextStep);
         }
         // Always carry over diagnosis text fields if post-AI fields are still empty
         if (!postAiFormData.diagnosisRank1Text && preAiFormData.diagnosisRank1Text) {
@@ -573,13 +570,15 @@ const handlePreAiSubmit = async () => {
       submitting.value = false;
       return;
     }
+    const normalizedInvestigation = normalizeInvestigationPlan(preAiFormData.investigationPlan);
+    const normalizedNextStep = normalizeNextStepAction(preAiFormData.nextStep);
     const assessmentPayload: AssessmentCreate = {
       assignment_id: assignment.id,
       phase: 'PRE',
       diagnostic_confidence: preAiFormData.confidenceScore,
       management_confidence: preAiFormData.certaintyScore,
-  investigation_plan: preAiFormData.investigationPlan,
-  next_step: preAiFormData.nextStep,
+      investigation_action: normalizedInvestigation,
+      next_step_action: normalizedNextStep,
       diagnosis_entries: diagnosisEntries,
     };
     console.debug('Submitting PRE assessment payload', assessmentPayload);
@@ -668,6 +667,8 @@ const handlePostAiSubmit = async () => {
       submitting.value = false;
       return;
     }
+    const normalizedInvestigation = normalizeInvestigationPlan(postAiFormData.investigationPlan);
+    const normalizedNextStep = normalizeNextStepAction(postAiFormData.nextStep);
     const assessmentPayload: AssessmentCreate = {
       assignment_id: assignment.id,
       phase: 'POST',
@@ -676,8 +677,8 @@ const handlePostAiSubmit = async () => {
       changed_primary_diagnosis: postAiFormData.changeDiagnosis,
       changed_management_plan: postAiFormData.changeManagement,
       ai_usefulness: postAiFormData.aiUsefulness,
-  investigation_plan: postAiFormData.investigationPlan,
-  next_step: postAiFormData.nextStep,
+      investigation_action: normalizedInvestigation,
+      next_step_action: normalizedNextStep,
       diagnosis_entries: diagnosisEntries,
     };
     console.debug('Submitting POST assessment payload', assessmentPayload);
@@ -704,11 +705,12 @@ const handlePostAiSubmit = async () => {
     // Navigation logic now driven by backend flags
     try {
       if (data?.block_complete && data?.block_index != null) {
-        console.debug('Backend indicates block complete; navigating to report', {
+        console.debug('Backend indicates block complete; redirecting to trust feedback', {
           block_index: data.block_index,
           report_available: data.report_available
         });
-        router.push({ path: `/game/report/${data.block_index}` });
+        gamesStore.startSummaryPolling(data.block_index);
+        router.push({ path: `/game/trust/${data.block_index}` });
         return; // stop further advancement calls
       }
       // Not complete yet -> request next assignment via unified flow
@@ -807,11 +809,10 @@ function handleBlockContinue() {
       <span class="gp-label">{{ gameProgressBarLabel }}</span>
     </ProgressBar>
   </div>
-  <!-- Post-AI accuracy reminder -->
+  <!-- Post-AI caution reminder -->
   <div v-if="isPostAiPhase" class="ai-accuracy-note mb-3">
-    <strong class="mr-1">注意：</strong>
-    AI 建议仅为辅助，并非 100% 准确。在验证数据集上的表现：第一推荐准确率 <span class="stat">49.50%</span>、前三推荐准确率 <span class="stat">67.50%</span>。
-    请以你的临床经验进行决策。
+    <strong class="mr-1">{{ $t('case.aiCautionLabel') }}</strong>
+    {{ $t('case.aiAccuracyNote') }}
   </div>
   <AIPredictionsTable :aiOutputs="aiOutputs" :isPostAiPhase="isPostAiPhase" />
   <CaseImageViewer :images="images" :loading="loading" :caseId="caseId" />
@@ -885,10 +886,6 @@ function handleBlockContinue() {
   font-size: 0.875rem;
   line-height: 1.4;
 }
-.ai-accuracy-note .stat {
-  font-weight: 600;
-}
-
 /* Subtle info banner for Pre-AI phase */
 .preai-help-note {
   padding: 0.75rem 0.875rem;

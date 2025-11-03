@@ -52,7 +52,7 @@ export async function getGame(block: number): Promise<GameSummary> {
 // Response shape for POST /game/start per OpenAPI spec
 interface StartGameResponse { block_index: number; assignments: Assignment[] }
 
-export async function createNextGame(_size = 10, _human_ai_probability = 0.5): Promise<Assignment[]> {
+export async function createNextGame(_size = 15, _human_ai_probability = 0.5): Promise<Assignment[]> {
   const { data } = await apiClient.post<StartGameResponse | Assignment[]>('/api/game/start');
   // Backend returns { block_index, assignments: [...] }. Older placeholder code treated entire object as an array
   // which made assignments.length undefined and UI thought there were no remaining cases.
@@ -122,4 +122,8 @@ export interface GameNextResponse {
 export async function gameNext(): Promise<GameNextResponse> {
   const { data } = await apiClient.post<GameNextResponse>('/api/game/next');
   return data;
+}
+
+export async function submitBlockTrust(block: number, trustScore: number): Promise<void> {
+  await apiClient.post(`/api/game/block/${block}/trust`, { trust_ai_score: trustScore });
 }

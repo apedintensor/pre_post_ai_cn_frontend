@@ -14,13 +14,7 @@
                 <Tag :value="slotProps.data.rank" rounded />
               </template>
             </Column>
-            <Column field="prediction.name" :header="$t('review.aiSuggestions')" sortable style="width: 60%"></Column>
-            <Column field="confidence_score" :header="$t('report.accuracyTop1')" sortable style="width: 25%">
-              <template #body="slotProps">
-                <ProgressBar :value="slotProps.data.confidence_score * 100" :showValue="false" style="height: .8em" />
-                <span class="ml-2">{{ (slotProps.data.confidence_score * 100).toFixed(0) }}%</span>
-              </template>
-            </Column>
+            <Column field="prediction.name" :header="$t('review.aiSuggestions')" sortable style="width: 100%"></Column>
           </DataTable>
         </div>
         <div v-else>
@@ -36,7 +30,6 @@ import Card from 'primevue/card';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Tag from 'primevue/tag';
-import ProgressBar from 'primevue/progressbar';
 import { useI18n } from 'vue-i18n';
 
 useI18n();

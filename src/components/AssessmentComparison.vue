@@ -109,7 +109,48 @@
       </div>
     </div>
 
-  <!-- (Management Strategy Comparison removed) -->
+    <div class="comparison-section mb-4">
+      <h3 class="text-xl font-semibold mb-3 flex align-items-center gap-2">
+        <i class="pi pi-sitemap"></i>
+        Management Plan Comparison
+      </h3>
+      <Card class="comparison-card">
+        <template #content>
+          <div class="management-grid">
+            <div class="mc-column">
+              <div class="mc-header flex align-items-center gap-2">
+                <i class="pi pi-user text-primary"></i>
+                <span>Pre-AI</span>
+              </div>
+              <div class="mc-item">
+                <span class="label">Investigation</span>
+                <span class="value">{{ getInvestigationLabel(preAiData) }}</span>
+              </div>
+              <div class="mc-item">
+                <span class="label">Next Step</span>
+                <span class="value">{{ getNextStepLabel(preAiData) }}</span>
+              </div>
+            </div>
+            <div class="mc-column">
+              <div class="mc-header flex align-items-center gap-2">
+                <i class="pi pi-android text-primary"></i>
+                <span>Post-AI</span>
+              </div>
+              <div class="mc-item" :class="{ changed: investigationChanged }">
+                <span class="label">Investigation</span>
+                <span class="value">{{ getInvestigationLabel(postAiData) }}</span>
+                <i v-if="investigationChanged" class="pi pi-exclamation-circle text-orange-500 ml-2"></i>
+              </div>
+              <div class="mc-item" :class="{ changed: nextStepChanged }">
+                <span class="label">Next Step</span>
+                <span class="value">{{ getNextStepLabel(postAiData) }}</span>
+                <i v-if="nextStepChanged" class="pi pi-exclamation-circle text-orange-500 ml-2"></i>
+              </div>
+            </div>
+          </div>
+        </template>
+      </Card>
+    </div>
 
     <!-- Summary Statistics -->
     <div class="comparison-section">
@@ -163,6 +204,8 @@ import { computed } from 'vue';
 import Card from 'primevue/card';
 import Tag from 'primevue/tag';
 import ProgressBar from 'primevue/progressbar';
+import type { InvestigationPlan, NextStepAction } from '../utils/assessmentEnums';
+import { formatInvestigationPlanZh, formatNextStepActionZh } from '../utils/assessmentEnums';
 
 interface DiagnosisTermRead {
   name: string;
@@ -179,6 +222,8 @@ interface AssessmentData {
   changeDiagnosis?: boolean | null;
   changeManagement?: boolean | null;
   aiUsefulness?: string | null;
+  investigationPlan?: InvestigationPlan | null;
+  nextStep?: NextStepAction | null;
 }
 
 const props = defineProps<{
@@ -230,7 +275,25 @@ const isDiagnosisChanged = (rank: number): boolean => {
   return preValue !== postValue;
 };
 
-const isManagementChanged = (): boolean => false;
+const getInvestigationLabel = (data: AssessmentData | null): string => {
+  return formatInvestigationPlanZh(data?.investigationPlan ?? null);
+};
+
+const getNextStepLabel = (data: AssessmentData | null): string => {
+  return formatNextStepActionZh(data?.nextStep ?? null);
+};
+
+const investigationChanged = computed(() => {
+  if (!props.preAiData || !props.postAiData) return false;
+  return (props.preAiData.investigationPlan ?? null) !== (props.postAiData.investigationPlan ?? null);
+});
+
+const nextStepChanged = computed(() => {
+  if (!props.preAiData || !props.postAiData) return false;
+  return (props.preAiData.nextStep ?? null) !== (props.postAiData.nextStep ?? null);
+});
+
+const isManagementChanged = (): boolean => investigationChanged.value || nextStepChanged.value;
 
 const changedDiagnosesCount = computed(() => {
   let count = 0;
@@ -334,6 +397,48 @@ const certaintyChange = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+.management-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1.25rem;
+}
+
+.mc-column {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.mc-header {
+  font-weight: 600;
+}
+
+.mc-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--border-radius);
+  background: var(--bg-surface-ground);
+}
+
+.mc-item.changed {
+  background: var(--orange-50);
+  border-color: var(--orange-200);
+}
+
+.mc-item .label {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-color-secondary);
+}
+
+.mc-item .value {
+  font-weight: 600;
 }
 
 .strategy-item,

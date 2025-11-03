@@ -61,6 +61,9 @@ export const useUserStore = defineStore('user', () => {
   }
 
   function evaluateNewUserHeuristic({ hasCompletedReports, hasActiveAssignment }: { hasCompletedReports: boolean; hasActiveAssignment: boolean; }) {
+    if (!isNewUser.value) {
+      return isNewUser.value;
+    }
     const shouldBeNew = !hasCompletedReports && !hasActiveAssignment;
     if (shouldBeNew !== isNewUser.value) {
       setIsNewUser(shouldBeNew);

@@ -109,7 +109,7 @@ export const useGamesStore = defineStore('games', () => {
     return Math.max(maxAssignmentsBlock ?? -1, maxGameBlock ?? -1);
   }
 
-  async function startNextGame(size = 10, probability = 0.5) {
+  async function startNextGame(size = 15, probability = 0.5) {
     if (creatingNext.value) return [];
     if (hasIncompleteBlock()) throw new Error('Finish current block before starting a new one.');
     creatingNext.value = true;

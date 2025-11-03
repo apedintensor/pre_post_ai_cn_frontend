@@ -170,6 +170,24 @@ const completionPercentage = computed(() => {
   return cases.value.length ? (completedCases.value.length / cases.value.length) * 100 : 0;
 });
 
+const reconcileNewUserFlag = () => {
+  if (!userStore.isAuthenticated) return;
+  const snapshot = progress.value;
+  const hasCompletedReports = (snapshot?.completed_cases ?? completedCases.value.length) > 0;
+  const caseProgressEntries = Object.values(caseStore.caseProgress ?? {});
+  const hasIncompleteLocal = caseProgressEntries.some(p => p?.preCompleted && !p?.postCompleted);
+  const hasStartedLocally = caseProgressEntries.some(p => p?.preCompleted || p?.postCompleted);
+  const hasAssignmentsInStore = Object.values(gamesStore.assignmentsByBlock || {}).some(list =>
+    Array.isArray(list) && list.some(a => !a?.completed_post_at)
+  );
+  const hasActiveAssignment =
+    hasAssignmentsInStore ||
+    hasIncompleteLocal ||
+    (snapshot != null && snapshot.assigned_cases != null && snapshot.assigned_cases > 0 && snapshot.remaining_cases != snapshot.assigned_cases) ||
+    hasStartedLocally;
+  userStore.evaluateNewUserHeuristic({ hasCompletedReports, hasActiveAssignment });
+};
+
 const startDemo = async () => {
   if (startingDemo.value) return;
   startingDemo.value = true;
@@ -211,6 +229,7 @@ const loadAndDisplayProgress = async () => {
     // Try fetching authoritative progress snapshot
     try {
       progress.value = await getGameProgress();
+      reconcileNewUserFlag();
     } catch (err) {
       console.warn('Failed to fetch /game/progress, falling back to local aggregation', err);
       // Fallback: aggregate across blocks locally
@@ -227,6 +246,7 @@ const loadAndDisplayProgress = async () => {
             unassigned_cases: 0,
             in_progress_cases: Object.values(caseStore.caseProgress).filter(p=>p.preCompleted && !p.postCompleted).length
         };
+        reconcileNewUserFlag();
       }
     }
 
@@ -238,12 +258,12 @@ const loadAndDisplayProgress = async () => {
       inProgress: Object.values(caseStore.caseProgress).filter(p => p.preCompleted && !p.postCompleted).length,
       notStarted: Object.values(caseStore.caseProgress).filter(p => !p.preCompleted && !p.postCompleted).length,
       // Add index signature to acc
-      progressByCase: Object.entries(caseStore.caseProgress).reduce((acc: { [key: string]: any }, [caseId, progress]) => {
+      progressByCase: Object.entries(caseStore.caseProgress).reduce((acc: { [key: string]: any }, [caseId, progressEntry]) => {
         acc[`case_${caseId}`] = {
-          preCompleted: progress.preCompleted,
-          postCompleted: progress.postCompleted,
-          status: progress.postCompleted ? 'completed' : 
-                 progress.preCompleted ? 'post-ai-pending' : 
+          preCompleted: progressEntry.preCompleted,
+          postCompleted: progressEntry.postCompleted,
+          status: progressEntry.postCompleted ? 'completed' : 
+                 progressEntry.preCompleted ? 'post-ai-pending' : 
                  'not-started'
         };
         return acc;
@@ -316,7 +336,11 @@ onUnmounted(()=>{
 
 // Add watch for assessment updates
 watch(() => caseStore.caseProgress, () => {
-  // This will trigger reactivity when assessment status changes
+  reconcileNewUserFlag();
+}, { deep: true });
+
+watch(() => gamesStore.assignmentsByBlock, () => {
+  reconcileNewUserFlag();
 }, { deep: true });
 
 // navigateToCase removed

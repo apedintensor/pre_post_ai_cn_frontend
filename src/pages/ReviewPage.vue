@@ -162,6 +162,8 @@ import Column from 'primevue/column';
 import ProgressBar from 'primevue/progressbar';
 import ReviewAssessmentDisplay from '../components/ReviewAssessmentDisplay.vue';
 import AssessmentComparison from '../components/AssessmentComparison.vue';
+import type { InvestigationPlan, NextStepAction } from '../utils/assessmentEnums';
+import { normalizeInvestigationPlan, normalizeNextStepAction } from '../utils/assessmentEnums';
 
 // Interfaces
 interface ImageRead {
@@ -195,6 +197,29 @@ interface AssessmentData {
   changeDiagnosis?: boolean | null;
   changeManagement?: boolean | null;
   aiUsefulness?: string | null;
+  investigationPlan?: InvestigationPlan | null;
+  nextStep?: NextStepAction | null;
+}
+
+function normalizeAssessmentData(raw: any): AssessmentData {
+  if (!raw) {
+    return {
+      diagnosisRank1Id: null,
+      diagnosisRank2Id: null,
+      diagnosisRank3Id: null,
+      confidenceScore: 3,
+      certaintyScore: 3,
+    };
+  }
+  return {
+    ...raw,
+    investigationPlan: normalizeInvestigationPlan(
+      raw.investigationAction ?? raw.investigation_action ?? raw.investigationPlan ?? raw.investigation_plan,
+    ) ?? null,
+    nextStep: normalizeNextStepAction(
+      raw.nextStepAction ?? raw.next_step_action ?? raw.nextStep ?? raw.next_step,
+    ) ?? null,
+  };
 }
 
 // Setup
@@ -281,8 +306,8 @@ const loadFromLocalStorage = (): boolean => {
     const postAiDataStr = localStorage.getItem(postAiKey);
     
     if (preAiDataStr && postAiDataStr) {
-      preAiData.value = JSON.parse(preAiDataStr);
-      postAiData.value = JSON.parse(postAiDataStr);
+      preAiData.value = normalizeAssessmentData(JSON.parse(preAiDataStr));
+      postAiData.value = normalizeAssessmentData(JSON.parse(postAiDataStr));
       return true;
     }
     
@@ -307,16 +332,22 @@ const loadFromAPI = async (): Promise<void> => {
     const pre = assessments.find(a => a.phase === 'PRE');
     const post = assessments.find(a => a.phase === 'POST');
     if (pre) {
-      preAiData.value = {
+      preAiData.value = normalizeAssessmentData({
         diagnosisRank1Id: null,
         diagnosisRank2Id: null,
         diagnosisRank3Id: null,
         confidenceScore: pre.diagnostic_confidence || 3,
-        certaintyScore: pre.management_confidence || 3
-      };
+        certaintyScore: pre.management_confidence || 3,
+        investigationPlan: normalizeInvestigationPlan(
+          pre.investigation_action ?? pre.investigation_plan,
+        ),
+        nextStep: normalizeNextStepAction(
+          pre.next_step_action ?? pre.next_step,
+        )
+      });
     }
     if (post) {
-      postAiData.value = {
+      postAiData.value = normalizeAssessmentData({
         diagnosisRank1Id: null,
         diagnosisRank2Id: null,
         diagnosisRank3Id: null,
@@ -324,8 +355,14 @@ const loadFromAPI = async (): Promise<void> => {
         certaintyScore: post.management_confidence || 3,
         changeDiagnosis: post.changed_primary_diagnosis || null,
         changeManagement: post.changed_management_plan || null,
-        aiUsefulness: post.ai_usefulness || null
-      };
+        aiUsefulness: post.ai_usefulness || null,
+        investigationPlan: normalizeInvestigationPlan(
+          post.investigation_action ?? post.investigation_plan,
+        ),
+        nextStep: normalizeNextStepAction(
+          post.next_step_action ?? post.next_step,
+        )
+      });
     }
   } catch (error) {
     console.error('Failed to load assessment data from API:', error);

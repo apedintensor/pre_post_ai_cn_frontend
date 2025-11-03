@@ -3,7 +3,7 @@ import { ref } from 'vue';
 import type { BlockFeedback, Assessment } from '../types/domain';
 import { useUserStore } from './userStore';
 
-const BLOCK_SIZE = 10;
+const BLOCK_SIZE = 15;
 
 interface CaseAssessmentCacheEntry { pre?: Assessment | null; post?: Assessment | null }
 

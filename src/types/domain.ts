@@ -1,6 +1,8 @@
 // Central domain types aligned with backend-normalized schemas.
 // All optional additive fields marked with ?: so we can evolve without breaking.
 
+import type { InvestigationPlan, NextStepAction } from '../utils/assessmentEnums';
+
 export interface DiagnosisTerm { id: number; name: string }
 
 // Suggestion (canonical + synonym) returned by /api/v1/diagnosis_terms/suggest
@@ -87,8 +89,11 @@ export interface AssessmentNew {
   phase: AssessmentPhase;
   diagnostic_confidence?: number | null;
   management_confidence?: number | null;
-  investigation_plan?: 'none' | 'biopsy' | 'other' | null;
-  next_step?: 'reassure' | 'manage' | 'refer' | null;
+  investigation_action?: InvestigationPlan | null;
+  next_step_action?: NextStepAction | null;
+  // Legacy server payload fallback (remove after API migration completes)
+  investigation_plan?: InvestigationPlan | null;
+  next_step?: NextStepAction | null;
   changed_primary_diagnosis?: boolean | null;
   changed_management_plan?: boolean | null;
   ai_usefulness?: string | null;
@@ -123,8 +128,12 @@ export interface AssessmentCreatePayload {
   phase: AssessmentPhase;
   diagnostic_confidence?: number | null;
   management_confidence?: number | null;
-  investigation_plan?: 'none' | 'biopsy' | 'other' | null;
-  next_step?: 'reassure' | 'manage' | 'refer' | null;
+  investigation_action?: InvestigationPlan | null;
+  next_step_action?: NextStepAction | null;
+  /** @deprecated use investigation_action */
+  investigation_plan?: never;
+  /** @deprecated use next_step_action */
+  next_step?: never;
   changed_primary_diagnosis?: boolean | null; // POST only
   changed_management_plan?: boolean | null;   // POST only
   ai_usefulness?: string | null;              // POST only
@@ -187,7 +196,7 @@ export interface LegacyDiagnosisCreatePayload {
 export interface PrePostComparableSubset {
   diagnostic_confidence?: number;
   management_confidence?: number;
-  investigation_plan?: 'none' | 'biopsy' | 'other' | null;
-  next_step?: 'reassure' | 'manage' | 'refer' | null;
+  investigation_action?: InvestigationPlan | null;
+  next_step_action?: NextStepAction | null;
   diagnoses: Array<{ rank: number; diagnosis_id?: number; raw_text?: string }>; // raw_text for future replacement
 }

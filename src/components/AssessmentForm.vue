@@ -171,6 +171,7 @@ import { ref, computed, watch } from 'vue';
 import Button from 'primevue/button';
 import Divider from 'primevue/divider';
 import { useI18n } from 'vue-i18n';
+import type { InvestigationPlan, NextStepAction } from '../utils/assessmentEnums';
 
 const { t } = useI18n();
 
@@ -186,8 +187,8 @@ interface FormData {
   diagnosisRank3Text: string | null;
   confidenceScore: number;
   certaintyScore: number;
-  investigationPlan: 'none' | 'biopsy' | 'other' | null;
-  nextStep: 'reassure' | 'manage' | 'refer' | null;
+  investigationPlan: InvestigationPlan | null;
+  nextStep: NextStepAction | null;
   // Post-AI specific fields - ensure they are optional or handled in parent
   changeDiagnosis?: boolean | null;
   changeManagement?: boolean | null;
@@ -306,15 +307,15 @@ function onChangeManagementUserToggle() {
 }
 
 const investigationOptions = computed(() => ([
-  { label: t('case.investigationNone'), value: 'none' },
-  { label: t('case.investigationBiopsy'), value: 'biopsy' },
-  { label: t('case.investigationOther'), value: 'other' }
+  { label: t('case.investigationNone'), value: 'NONE' as InvestigationPlan },
+  { label: t('case.investigationBiopsy'), value: 'BIOPSY' as InvestigationPlan },
+  { label: t('case.investigationOther'), value: 'OTHER' as InvestigationPlan }
 ]));
 
 const nextStepOptions = computed(() => ([
-  { label: t('case.nextReassure'), value: 'reassure' },
-  { label: t('case.nextManage'), value: 'manage' },
-  { label: t('case.nextRefer'), value: 'refer' }
+  { label: t('case.nextReassure'), value: 'REASSURE' as NextStepAction },
+  { label: t('case.nextManage'), value: 'MANAGE_MYSELF' as NextStepAction },
+  { label: t('case.nextRefer'), value: 'REFER' as NextStepAction }
 ]));
 
 const aiUsefulnessOpts = computed(() => props.aiUsefulnessOptions ?? ([

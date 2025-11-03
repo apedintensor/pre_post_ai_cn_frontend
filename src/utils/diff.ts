@@ -1,4 +1,5 @@
 import type { PrePostComparableSubset } from '../types/domain';
+import { normalizeInvestigationPlan, normalizeNextStepAction } from './assessmentEnums';
 
 // Compute whether POST assessment differs from PRE snapshot.
 // Differences: any diagnosis (by rank) changed (id or raw_text), or any tracked field changed.
@@ -8,8 +9,8 @@ export function computeWasUpdated(pre: PrePostComparableSubset, post: PrePostCom
   const fieldKeys: (keyof PrePostComparableSubset)[] = [
     'diagnostic_confidence',
     'management_confidence',
-  'investigation_plan',
-  'next_step',
+    'investigation_action',
+    'next_step_action',
   ];
 
   for (const key of fieldKeys) {
@@ -35,15 +36,23 @@ export function computeWasUpdated(pre: PrePostComparableSubset, post: PrePostCom
 export function buildComparableSubset(args: {
   diagnostic_confidence?: number;
   management_confidence?: number;
-  investigation_plan?: 'none' | 'biopsy' | 'other' | null;
-  next_step?: 'reassure' | 'manage' | 'refer' | null;
+  investigation_plan?: string | null;
+  investigation_action?: string | null;
+  next_step?: string | null;
+  next_step_action?: string | null;
   diagnoses: Array<{ rank: number; diagnosis_id?: number; raw_text?: string } | undefined | null>;
 }): PrePostComparableSubset {
+  const resolvedInvestigation = normalizeInvestigationPlan(
+    args.investigation_action ?? args.investigation_plan,
+  ) ?? null;
+  const resolvedNextStep = normalizeNextStepAction(
+    args.next_step_action ?? args.next_step,
+  ) ?? null;
   return {
     diagnostic_confidence: args.diagnostic_confidence,
     management_confidence: args.management_confidence,
-    investigation_plan: args.investigation_plan ?? null,
-    next_step: args.next_step ?? null,
+    investigation_action: resolvedInvestigation,
+    next_step_action: resolvedNextStep,
     diagnoses: args.diagnoses.filter(Boolean).map(d => ({
       rank: (d as any).rank,
       diagnosis_id: (d as any).diagnosis_id,

@@ -39,7 +39,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue';
+import { ref, onMounted, onUnmounted, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Card from 'primevue/card';
 import Button from 'primevue/button';
@@ -70,6 +70,7 @@ const loading = ref(true);
 const checking = ref(false);
 const canView = ref(false);
 const polling = ref(false);
+const pollIntervalId = ref<number | null>(null);
 const report: any = ref({});
 // Diagnosis term label cache
 const termMap = ref<Record<number,string>>({});
@@ -146,16 +147,31 @@ async function checkAvailability(){
   } catch(e){ canView.value = false; } finally { checking.value=false; }
 }
 
+function clearPolling(){
+  if (pollIntervalId.value != null) {
+    clearInterval(pollIntervalId.value);
+    pollIntervalId.value = null;
+  }
+  polling.value = false;
+}
+
 function startPolling(){
   if(polling.value || canView.value) return;
   polling.value = true;
-  const interval = setInterval(async ()=>{
+  if (pollIntervalId.value != null) {
+    clearInterval(pollIntervalId.value);
+    pollIntervalId.value = null;
+  }
+  pollIntervalId.value = window.setInterval(async ()=>{
     console.debug('Report poll blockIndex=', blockIndex.value, typeof blockIndex.value);
     if(!Number.isInteger(blockIndex.value) || blockIndex.value < 0){
-      clearInterval(interval); polling.value=false; return;
+      clearPolling();
+      return;
     }
     await checkAvailability();
-    if(canView.value){ clearInterval(interval); polling.value=false; }
+    if(canView.value){
+      clearPolling();
+    }
   }, 3000);
 }
 
@@ -174,6 +190,10 @@ function goBack(){ router.back(); }
 // helper functions now encapsulated in GameReportCaseTable
 
 onMounted(async () => { await ensureTerms(); await checkAvailability(); if(!canView.value) startPolling(); });
+
+onUnmounted(() => {
+  clearPolling();
+});
 
 // Populate missing pre/post user input fields using assessment diagnosis_entries
 async function fillInputsFromAssessments(){

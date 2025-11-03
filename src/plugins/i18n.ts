@@ -15,7 +15,7 @@ const messages = {
       complete: '完成',
       loading: '加载中…',
       next: '下一步',
-      back: '返回',
+  back: '返回',
       required: '必填项',
       error: '错误',
       success: '成功',
@@ -38,7 +38,8 @@ const messages = {
       sectionConfidence: '诊断信心',
       aiImpact: 'AI 影响评估',
       preHelp: '先按自己的判断填写：输入 1–3 个诊断（必须填写第 1 条），选择检查与下一步，并设置相应信心与把握。提交后可查看 AI 建议。',
-      aiAccuracyNote: '温馨提示：AI 建议仅作辅助，准确率并非 100%。在验证数据集上的表现：Top‑1 准确率 49.50%，Top‑3 准确率 67.50%。请结合临床经验综合判断。',
+  aiCautionLabel: '提醒：',
+  aiAccuracyNote: 'AI 建议仅作辅助，无法保证完全准确。请结合你的临床经验进行最终判断。',
       primaryDiagnosis: '第一可能诊断（必填）',
       differential2: '第二可能诊断（选填）',
       differential3: '第三可能诊断（选填）',
@@ -71,7 +72,7 @@ const messages = {
       demoPreSuccessTitle: 'Pre-AI 体验提交完成',
       demoPreSuccessDetail: '已进入 AI 辅助阶段，请继续完成 Post-AI。',
       demoPostSuccessTitle: '体验完成',
-      demoPostSuccessDetail: '选择再次体验或开始正式 10 例任务。'
+  demoPostSuccessDetail: '选择再次体验或开始正式 15 例任务。'
     },
     dashboard: {
       title: '任务面板',
@@ -85,7 +86,7 @@ const messages = {
       completed: '已完成',
       preOnly: '仅完成 AI 前',
       remaining: '剩余',
-      introLine1: '每轮测试为10个病例，请至少完成一轮测试！',
+  introLine1: '每轮测试为15个病例，请至少完成一轮测试！',
       introLine2: '总共200题。每轮完成后可获得个人报告。',
       allDone: '全部完成',
       noGamesYet: '暂无游戏，点击开始你的第一轮。',
@@ -104,7 +105,7 @@ const messages = {
       warmupStep1: '点击“开始demo”按钮进入演示。',
       warmupStep2: '完成 Pre-AI 与 Post-AI 两个流程。',
       warmupStep3: '熟悉流程后，在完成页选择“开始正式游戏”进入实战。',
-      warmupNote: '提示：一轮为10个诊断。',
+  warmupNote: '提示：一轮为15个诊断。',
       startDemoFailed: 'demo暂时无法启动，请稍后重试。',
       startDemo: '开始demo'
     },
@@ -144,6 +145,20 @@ const messages = {
       startGameError: '暂时无法获取正式任务，请稍后重试。',
       practiceError: '体验模式暂时不可用，请稍后重试。',
       exhausted: '当前没有可用的正式任务，请稍后再试。'
+    },
+    trust: {
+      title: 'AI 可信度反馈',
+      prompt: '基于这{count}个病例，你觉得 AI 的预测是否可信？',
+      scaleLabel: '请为本轮 AI 的整体可信度打分（1 表示完全不可信，5 表示非常可信）',
+      option1: '完全不可信',
+      option2: '较不可信',
+      option3: '一般可信',
+      option4: '较为可信',
+      option5: '非常可信',
+  submit: '提交评价',
+      toastSaved: '感谢反馈，我们会持续改进 AI 表现。',
+      toastSelect: '请选择一个可信度评分。',
+      toastError: '提交反馈失败，请稍后再试。'
     },
     auth: {
       login: '登录',

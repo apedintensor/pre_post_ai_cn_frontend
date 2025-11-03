@@ -52,7 +52,22 @@
       </div>
     </Fieldset>
 
-  <!-- Management Plan Section removed (deprecated) -->
+    <Fieldset legend="Management Plan" class="mb-4">
+      <div class="grid equal-cols">
+        <div class="col-12 md:col-6">
+          <div class="field-display">
+            <span class="field-label font-semibold">Investigation:</span>
+            <div class="value">{{ getInvestigationLabel(assessmentData.investigationPlan) }}</div>
+          </div>
+        </div>
+        <div class="col-12 md:col-6">
+          <div class="field-display">
+            <span class="field-label font-semibold">Next Step:</span>
+            <div class="value">{{ getNextStepLabel(assessmentData.nextStep) }}</div>
+          </div>
+        </div>
+      </div>
+    </Fieldset>
 
     <!-- AI Impact Assessment (Post-AI only) -->
     <div v-if="showAiImpact && assessmentData.changeDiagnosis !== undefined">
@@ -97,6 +112,8 @@
 <script setup lang="ts">
 import Fieldset from 'primevue/fieldset';
 import Tag from 'primevue/tag';
+import type { InvestigationPlan, NextStepAction } from '../utils/assessmentEnums';
+import { formatInvestigationPlanZh, formatNextStepActionZh } from '../utils/assessmentEnums';
 
 interface DiagnosisTermRead {
   name: string;
@@ -113,6 +130,8 @@ interface AssessmentData {
   changeDiagnosis?: boolean | null;
   changeManagement?: boolean | null;
   aiUsefulness?: string | null;
+  investigationPlan?: InvestigationPlan | null;
+  nextStep?: NextStepAction | null;
 }
 
 const props = defineProps<{
@@ -169,6 +188,14 @@ const getAiUsefulnessSeverity = (usefulness: string | null | undefined): string 
     case 'not': return 'danger';
     default: return 'secondary';
   }
+};
+
+const getInvestigationLabel = (value: AssessmentData['investigationPlan']): string => {
+  return formatInvestigationPlanZh(value ?? null);
+};
+
+const getNextStepLabel = (value: AssessmentData['nextStep']): string => {
+  return formatNextStepActionZh(value ?? null);
 };
 </script>
 

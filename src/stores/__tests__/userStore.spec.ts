@@ -89,6 +89,6 @@ describe('userStore new user flag', () => {
     expect(store.isNewUser).toBe(false);
 
     store.evaluateNewUserHeuristic({ hasCompletedReports: false, hasActiveAssignment: false });
-    expect(store.isNewUser).toBe(true);
+    expect(store.isNewUser).toBe(false);
   });
 });
