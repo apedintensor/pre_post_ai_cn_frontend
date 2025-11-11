@@ -44,8 +44,8 @@ describe('assessmentEnums', () => {
 
   it('formats next step labels in zh-CN', () => {
     expect(formatNextStepActionZh('REASSURE')).toBe('安抚随访');
-    expect(formatNextStepActionZh('MANAGE_MYSELF')).toBe('自行处理');
-    expect(formatNextStepActionZh('REFER')).toBe('转诊');
+    expect(formatNextStepActionZh('MANAGE_MYSELF')).toBe('我可以处理');
+    expect(formatNextStepActionZh('REFER')).toBe('转诊至专科');
     expect(formatNextStepActionZh(undefined)).toBe('—');
     // @ts-expect-error intentional invalid enum value
     expect(formatNextStepActionZh('SOMETHING_ELSE')).toBe('—');

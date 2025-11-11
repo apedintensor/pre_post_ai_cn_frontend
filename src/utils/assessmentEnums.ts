@@ -55,8 +55,8 @@ const investigationLabelsZh: Record<InvestigationPlan, string> = {
 
 const nextStepLabelsZh: Record<NextStepAction, string> = {
   REASSURE: '安抚随访',
-  MANAGE_MYSELF: '自行处理',
-  REFER: '转诊'
+  MANAGE_MYSELF: '我可以处理',
+  REFER: '转诊至专科'
 };
 
 export function formatInvestigationPlanZh(value: InvestigationPlan | null | undefined): string {

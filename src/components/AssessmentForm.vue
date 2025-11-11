@@ -420,7 +420,11 @@ const diagnosisRank3Proxy = computed({
 :deep(.centered-field .p-selectbutton) { justify-content:center; }
 /* Constrain width a bit on large screens so buttons aren't overly wide */
 @media (min-width:768px) {
-  :deep(.centered-field .p-selectbutton) { max-width:320px; }
+  :deep(.centered-field .p-selectbutton) { max-width:480px; }
+}
+
+:deep(.centered-field .p-selectbutton .p-button) {
+  white-space: nowrap;
 }
 
 /* Center fieldset legends */
